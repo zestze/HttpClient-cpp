@@ -1,4 +1,4 @@
-TARGET 		= test
+TARGET 		= client
 CC 		= g++
 CXX 		= g++
 INCLUDES 	=
