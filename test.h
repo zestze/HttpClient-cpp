@@ -8,6 +8,9 @@
 #include <boost/asio.hpp>
 #include <string>
 #include <deque>
+#include <array>
+
+#define BUFF_SIZE 128 // @TODO: make large buff_size for when reading actual data
 
 using boost::asio::ip::tcp;
 
