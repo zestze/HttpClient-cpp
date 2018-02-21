@@ -48,6 +48,8 @@
 #include <array>
 #include <algorithm>
 
+#include "HttpRequest.h"
+
 #define SMALL_BUFF_SIZE 128 // @TODO: make large buff_size for when reading actual data
 //#define BUFF_SIZE 1024
 #define BUFF_SIZE 4096

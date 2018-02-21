@@ -35,6 +35,9 @@ std::string join_(std::deque<std::string> msgs, std::string delim)
 	return full_msg;
 }
 
+/*
+ * Intended for small messages, will probably not be used here.
+ */
 std::string try_reading_from_sock(tcp::socket& sock)
 {
 	std::array<char, BUFF_SIZE> buff = { };
@@ -44,6 +47,8 @@ std::string try_reading_from_sock(tcp::socket& sock)
 	return msg;
 }
 
+/*
+ */
 void try_writing_to_sock(tcp::socket& sock, std::string msg)
 {
 	boost::system::error_code ec;
@@ -126,32 +131,40 @@ int parse_for_cont_length(std::string httpHeader)
 	return std::stoi(num);
 }
 
+void simple_download(std::ofstream& outfile, tcp::socket& socket, std::vector<char>& buff,
+		size_t len, std::vector<char>::iterator it)
+{
+	size_t i = 0;
+	for (; it != buff.end() && i < len; ++it, ++i)
+		outfile << *it;
+
+	// lazy solution @TODO: grab content-length and parse that instead of
+	// reading until none left
+	//int content_length = parse_for_cont_length(header);
+	boost::system::error_code ec;
+	for (;;) {
+		for (char& c : buff)
+			c = '\0';
+		len = socket.read_some(boost::asio::buffer(buff), ec);
+		if (ec == boost::asio::error::eof)
+			break;
+		else if (ec)
+			throw boost::system::system_error(ec);
+		for (size_t i = 0; i < len; i++)
+			outfile << buff[i];
+	}
+}
+
+void parallel_download()
+{
+}
+
 void run(std::string url, std::string filepath)
 {
 	tcp::socket socket = connect_to_server(url);
 
-	//std::cout << try_reading_from_sock(socket) << "\n";
-	boost::asio::streambuf request;
-	std::ostream request_stream(&request);
-	request_stream << "GET " << filepath << " HTTP/1.0\r\n";
-	request_stream << "Accept: */*\r\n";
-	request_stream << "Connection: close\r\n\r\n";
-
-	std::string req;
-	req += "GET " + filepath + " HTTP/1.1\r\n"
-		+ "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,"
-		+ ",image/webp,image/apng,*/*;q=0.8\r\n"
-		+ "Accept-Encoding: gzip, deflate\r\n"
-		+ "Accept-Language: en-US,en;q=0.9\r\n"
-		+ "Connection: close\r\n"
-		/*+ "Connection: keep-alive\r\n"*/
-		+ "Host: storage.googleapis.com\r\n"
-		+ "\r\n";
-
-	std::cout << req << "\n";
-	try_writing_to_sock(socket, req);
-
-	//boost::asio::write(socket, request);
+	HttpRequest req (url, filepath);
+	try_writing_to_sock(socket, req.to_string());
 
 	// open file, read from socket and write to file
 	std::ofstream outfile;
@@ -163,42 +176,22 @@ void run(std::string url, std::string filepath)
 	boost::system::error_code ec;
 	size_t len = socket.read_some(boost::asio::buffer(buff), ec);
 
-	auto crlf_pos = find_crlfsuffix_in(buff);
-	if (crlf_pos == buff.end() - 3)
+	auto crlf_pos = find_crlfsuffix_in(buff); // note: position of CRLFCRLF
+	auto not_found = buff.end() - 3;
+	if (crlf_pos == not_found)
 		throw "crlf not in initial http response";
 
 	std::string header (buff.begin(), crlf_pos);
-	//std::string rest (crlf_pos + 4, buff.end());
 	bool accepts_byte_ranges = check_accepts_byte_ranges(header);
+	size_t body_len = len - header.length() - 4; // 4 bc CRLFCRLF is 4 characters long
+	auto body_pos = crlf_pos + 4; // 4 bc CRLFCRLF is 4 characters long
+	if (!accepts_byte_ranges)
+		simple_download(outfile, socket, buff, body_len, body_pos);
+	else
+		parallel_download();
 
 	// @TODO: use accepts_byte_ranges to determine if requesting chunk or not
 	//outfile << std::string(crlf_pos + 4, buff.end());
-	
-	len -= header.length();
-	len -= 4;
-	auto it = crlf_pos + 4;
-	size_t i = 0;
-	for (; it != buff.end() && i < len; ++it, ++i)
-		outfile << *it;
-
-	// lazy solution @TODO: grab content-length and parse that instead of
-	// reading until none left
-	int content_length = parse_for_cont_length(header);
-	for (;;) {
-		for (char& c : buff)
-			c = '\0';
-		len = socket.read_some(boost::asio::buffer(buff), ec);
-		if (ec == boost::asio::error::eof) {
-			//std::cout << "reached eof\n";
-			break;
-		}
-		else if (ec)
-			throw boost::system::system_error(ec);
-		for (size_t i = 0; i < len; i++)
-			outfile << buff[i];
-		//outfile << buff.data();
-	}
-
 	// check if content_length equals amount grabbed thus far.
 	// If not, then use voodoo magic.
 	// @TODO: update loop to record amount_downloaded, and compare to content_length
@@ -224,7 +217,6 @@ int main(int argc, char **argv)
 		msgs.pop_front();
 
 		std::string filename_str = join_(msgs, "/");
-		// format: vimeo-test/...
 
 		run(url_str, filename_str);
 
