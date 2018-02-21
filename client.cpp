@@ -79,7 +79,7 @@ tcp::socket connect_to_server(std::string url)
  *
  * In case where it's not found, returns buff.end() - 3
  */
-auto find_crlf_in_vector(std::vector<char>& buff)
+std::vector<char>::iterator find_crlfsuffix_in(std::vector<char>& buff)
 {
 	auto it = buff.begin();
 	for (; it != buff.end() - 3; ++it) {
@@ -100,12 +100,30 @@ auto find_crlf_in_vector(std::vector<char>& buff)
 
 bool check_accepts_byte_ranges(std::string httpHeader)
 {
-	std::size_t start_pos = httpHeader.find("Accept-Ranges");
+	std::size_t start_pos = httpHeader.find("Accept-Ranges:");
 	if (start_pos == std::string::npos)
 		return false;
-	std::size_t crlf_pos = httpHeader.find("\r\n");
+	std::size_t crlf_pos = httpHeader.find("\r\n", start_pos);
 	if (crlf_pos == std::string::npos)
 		throw "didn't give correct httpHeader";
+	std::size_t byte_pos = httpHeader.find("bytes", start_pos);
+	std::size_t Byte_pos = httpHeader.find("Bytes", start_pos);
+	if (byte_pos < crlf_pos || Byte_pos < crlf_pos)
+		return true;
+	return false;
+}
+
+int parse_for_cont_length(std::string httpHeader)
+{
+	std::size_t start_pos = httpHeader.find("Content-Length:");
+	if (start_pos == std::string::npos)
+		throw "no content length in httpHeader";
+	std::size_t crlf_pos = httpHeader.find("\r\n", start_pos);
+	std::string temp ("Content-Length:");
+	std::string num = httpHeader.substr(start_pos + temp.length(), crlf_pos);
+	auto end_pos = std::remove(num.begin(), num.end(), ' ');
+	num.erase(end_pos, num.end());
+	return std::stoi(num);
 }
 
 void run(std::string url, std::string filepath)
@@ -125,7 +143,8 @@ void run(std::string url, std::string filepath)
 		+ ",image/webp,image/apng,*/*;q=0.8\r\n"
 		+ "Accept-Encoding: gzip, deflate\r\n"
 		+ "Accept-Language: en-US,en;q=0.9\r\n"
-		+ "Connection: keep-alive\r\n"
+		+ "Connection: close\r\n"
+		/*+ "Connection: keep-alive\r\n"*/
 		+ "Host: storage.googleapis.com\r\n"
 		+ "\r\n";
 
@@ -140,32 +159,52 @@ void run(std::string url, std::string filepath)
 	std::string file_name = temp.back();
 	outfile.open(file_name, std::ios::out | std::ios::binary);
 
-	//std::array<char, BUFF_SIZE> buff = { };
 	std::vector<char> buff(BUFF_SIZE, '\0');
 	boost::system::error_code ec;
 	size_t len = socket.read_some(boost::asio::buffer(buff), ec);
 
-	auto crlf_pos = find_crlf_in_vector(buff);
+	auto crlf_pos = find_crlfsuffix_in(buff);
 	if (crlf_pos == buff.end() - 3)
 		throw "crlf not in initial http response";
 
 	std::string header (buff.begin(), crlf_pos);
-	std::cout << filepath << "\n";
-	std::cout << header << "\n";
-	std::string rest (crlf_pos, buff.end());
-	std::cout << rest << "\n";
+	//std::string rest (crlf_pos + 4, buff.end());
+	bool accepts_byte_ranges = check_accepts_byte_ranges(header);
 
-	/*
+	// @TODO: use accepts_byte_ranges to determine if requesting chunk or not
+	//outfile << std::string(crlf_pos + 4, buff.end());
+	
+	len -= header.length();
+	len -= 4;
+	auto it = crlf_pos + 4;
+	size_t i = 0;
+	for (; it != buff.end() && i < len; ++it, ++i)
+		outfile << *it;
+
+	// lazy solution @TODO: grab content-length and parse that instead of
+	// reading until none left
+	int content_length = parse_for_cont_length(header);
 	for (;;) {
+		for (char& c : buff)
+			c = '\0';
 		len = socket.read_some(boost::asio::buffer(buff), ec);
-		if (ec == boost::asio::error::eof)
+		if (ec == boost::asio::error::eof) {
+			//std::cout << "reached eof\n";
 			break;
+		}
 		else if (ec)
 			throw boost::system::system_error(ec);
-
-		outfile << buff.data();
+		for (size_t i = 0; i < len; i++)
+			outfile << buff[i];
+		//outfile << buff.data();
 	}
-	*/
+
+	// check if content_length equals amount grabbed thus far.
+	// If not, then use voodoo magic.
+	// @TODO: update loop to record amount_downloaded, and compare to content_length
+	// and if not equal, make an HTTP request for more.
+	// Although, this seems like if Byte-Range didn't work, then this definitely wouldn't
+	// work.
 
 	outfile.close();
 }
@@ -188,6 +227,9 @@ int main(int argc, char **argv)
 		// format: vimeo-test/...
 
 		run(url_str, filename_str);
+
+	} catch(boost::system::system_error& e) {
+		std::cerr << e.what() << "\n";
 	} catch(std::exception& e) {
 		std::cerr << e.what() << "\n";
 	}

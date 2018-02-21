@@ -17,6 +17,7 @@
  * Maybe make chunk size near buffer size?
  *
  * @TODO: integrity checksum
+ * x-goog-hash, md5 and crc32c
  *
  * @TODO: Handle errors and retries
  *
@@ -31,6 +32,7 @@
  * @TODO: determine best buffer size?
  *
  * @TODO: implement a DASH?
+ *
  */
 
 #ifndef __CLIENT_H__
@@ -44,9 +46,11 @@
 #include <string>
 #include <deque>
 #include <array>
+#include <algorithm>
 
 #define SMALL_BUFF_SIZE 128 // @TODO: make large buff_size for when reading actual data
-#define BUFF_SIZE 1024
+//#define BUFF_SIZE 1024
+#define BUFF_SIZE 4096
 
 using String_Deq = std::deque<std::string>;
 
