@@ -47,11 +47,13 @@
 #include <deque>
 #include <array>
 #include <algorithm>
+#include <thread>
 
+#include "Conc_Queue.h"
 #include "HttpRequest.h"
 #include "shared.h"
 
-#ifndef __BUFF_SIZE__
+#ifndef BUFF_SIZE
 #define BUFF_SIZE 4096
 #endif
 
@@ -75,6 +77,7 @@ class Client {
 		std::unique_ptr<tcp::socket> _sockptr;
 		std::string _host_url;
 		std::string _file_path;
+		std::deque<std::thread> _threads;
 };
 
 #endif

@@ -6,7 +6,7 @@
 #include <deque>
 #include <array>
 
-#ifndef __BUFF_SIZE__
+#ifndef BUFF_SIZE
 #define BUFF_SIZE 4096
 #endif
 

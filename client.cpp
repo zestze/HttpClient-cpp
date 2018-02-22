@@ -27,7 +27,7 @@ void Client::simple_download(std::ofstream& outfile, std::vector<char>& buff,
 	// reading until none left
 	//int content_length = parse_for_cont_length(header);
 	boost::system::error_code ec;
-	for (;;) {
+	while (!exit_thread) {
 		for (char& c : buff)
 			c = '\0';
 		len = socket.read_some(boost::asio::buffer(buff), ec);
@@ -48,6 +48,12 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 void Client::run()
 {
 	try {
+		std::cout << "Starting client...\n";
+		std::cout << "Type CTRL+C to quit" << std::endl;
+
+		set_globals();
+		std::signal(SIGINT, signal_handler);
+
 		_sockptr = std::make_unique<tcp::socket>(connect_to_server(_host_url));
 		tcp::socket& socket = *_sockptr;
 
@@ -77,11 +83,19 @@ void Client::run()
 		else
 			parallel_download(outfile, buff, body_len, body_pos);
 
+		if (exit_thread) {
+			for (std::thread& t : _threads)
+				t.join();
+			_threads.clear();
+		}
+
 	}
 	catch (...)
 	{
 		exit_thread = true;
-		// @TODO: join threads
+		for (std::thread& t : _threads)
+			t.join();
+		_threads.clear();
 		throw;
 	}
 	// std::ofstream close on destruction because of RAII
