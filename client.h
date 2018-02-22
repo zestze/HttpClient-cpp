@@ -49,22 +49,30 @@
 #include <algorithm>
 
 #include "HttpRequest.h"
+#include "shared_methods.h"
 
-#define SMALL_BUFF_SIZE 128 // @TODO: make large buff_size for when reading actual data
-//#define BUFF_SIZE 1024
+#ifndef __BUFF_SIZE__
 #define BUFF_SIZE 4096
+#endif
 
 using String_Deq = std::deque<std::string>;
-
 using boost::asio::ip::tcp;
 
-std::deque<std::string> split_(std::string full_msg, std::string delim);
+class Client {
+	public:
+		Client(std::string url, std::string file)
+			: _host_url{url}, _file_path{file} { }
 
-/*
- * if li = ["abc", "def", "ghi"]
- * then a call with delim = "/" will result in:
- * "/abc/def/ghi
- */
-std::string join_(std::deque<std::string> msgs, std::string delim);
+		void parallel_download(std::ofstream& outfile, std::vector<char>& buff,
+				size_t len, std::vector<char>::iterator it);
+
+		void simple_download(std::ofstream& outfile, std::vector<char>& buff,
+				size_t len, std::vector<char>::iterator it);
+		void run();
+	private:
+		std::unique_ptr<tcp::socket> _sockptr;
+		std::string _host_url;
+		std::string _file_path;
+};
 
 #endif
