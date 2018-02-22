@@ -78,8 +78,6 @@ class Client {
 		Client(std::string url, std::string file)
 			: _host_url{url}, _file_path{file} { }
 
-		~Client() = default;
-
 		void parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 				size_t len, std::vector<char>::iterator it);
 

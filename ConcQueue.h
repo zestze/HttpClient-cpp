@@ -14,14 +14,46 @@ class ConcQueue {
 
 		// don't want to copy locks, undesired behavior
 		ConcQueue(const ConcQueue<T>& other) = delete;
+		ConcQueue(const ConcQueue<T>&& other)
+		{
+			_lock = std::move(other._lock);
+			_queue = std::move(other._queue);
+		}
 
-		~ConcQueue();
+		ConcQueue& operator=(const ConcQueue& other) = delete;
+		ConcQueue& operator=(const ConcQueue&& other)
+		{
+			_lock = std::move(other._lock);
+			_queue = std::move(other._queue);
+		}
 
-		T get();
+		~ConcQueue()
+		{
+			std::lock_guard<std::mutex> lock(_lock);
+			_queue.clear();
+		}
 
-		void put(T t);
+		T get()
+		{
+			std::lock_guard<std::mutex> lock(_lock);
+			T retval = _queue.front();
+			_queue.pop_front();
+			return retval;
+		}
 
-		void poison_self(T poison, size_t num_threads);
+		void put(T t)
+		{
+			std::lock_guard<std::mutex> lock(_lock);
+			_queue.push_back(t);
+		}
+
+		void poison_self(T poison, size_t num_threads)
+		{
+			std::lock_guard<std::mutex> lock(_lock);
+			_queue.clear();
+			for (size_t i = 0; i < num_threads; i++)
+				_queue.push_back(poison);
+		}
 
 	private:
 		std::deque<T> _queue;
