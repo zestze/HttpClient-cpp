@@ -1,5 +1,20 @@
 #include "client.h"
 
+// ************** GLOBALS *************
+std::atomic<bool> exit_thread;
+// ************** GLOBALS *************
+
+void signal_handler(int signal)
+{
+	if (signal)
+		exit_thread = true;
+}
+
+void set_globals()
+{
+	exit_thread = false;
+}
+
 void Client::simple_download(std::ofstream& outfile, std::vector<char>& buff,
 		size_t len, std::vector<char>::iterator it)
 {
@@ -32,35 +47,43 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 
 void Client::run()
 {
-	_sockptr = std::make_unique<tcp::socket>(connect_to_server(_host_url));
-	tcp::socket& socket = *_sockptr;
+	try {
+		_sockptr = std::make_unique<tcp::socket>(connect_to_server(_host_url));
+		tcp::socket& socket = *_sockptr;
 
-	HttpRequest req (_host_url, _file_path);
-	try_writing_to_sock(socket, req.to_string());
+		HttpRequest req (_host_url, _file_path);
+		try_writing_to_sock(socket, req.to_string());
 
-	// open file, read from socket and write to file
-	std::ofstream outfile;
-	auto temp = split_(_file_path, "/");
-	std::string file_name = temp.back();
-	outfile.open(file_name, std::ios::out | std::ios::binary);
+		// open file, read from socket and write to file
+		std::ofstream outfile;
+		auto temp = split_(_file_path, "/");
+		std::string file_name = temp.back();
+		outfile.open(file_name, std::ios::out | std::ios::binary);
 
-	std::vector<char> buff(BUFF_SIZE, '\0');
-	boost::system::error_code ec;
-	size_t len = socket.read_some(boost::asio::buffer(buff), ec);
+		std::vector<char> buff(BUFF_SIZE, '\0');
+		boost::system::error_code ec;
+		size_t len = socket.read_some(boost::asio::buffer(buff), ec);
 
-	auto crlf_pos = find_crlfsuffix_in(buff); // note: position of CRLFCRLF
-	if (crlf_pos == buff.end())
-		throw "crlf not in initial http response";
+		auto crlf_pos = find_crlfsuffix_in(buff); // note: position of CRLFCRLF
+		if (crlf_pos == buff.end())
+			throw "crlf not in initial http response";
 
-	std::string header (buff.begin(), crlf_pos);
-	bool accepts_byte_ranges = check_accepts_byte_ranges(header);
-	size_t body_len = len - header.length() - 4; // 4 bc CRLFCRLF is 4 characters long
-	auto body_pos = crlf_pos + 4; // 4 bc CRLFCRLF is 4 characters long
-	if (!accepts_byte_ranges)
-		simple_download(outfile, buff, body_len, body_pos);
-	else
-		parallel_download(outfile, buff, body_len, body_pos);
+		std::string header (buff.begin(), crlf_pos);
+		bool accepts_byte_ranges = check_accepts_byte_ranges(header);
+		size_t body_len = len - header.length() - 4; // 4 bc CRLFCRLF is 4 characters long
+		auto body_pos = crlf_pos + 4; // 4 bc CRLFCRLF is 4 characters long
+		if (!accepts_byte_ranges)
+			simple_download(outfile, buff, body_len, body_pos);
+		else
+			parallel_download(outfile, buff, body_len, body_pos);
 
-	outfile.close();
+	}
+	catch (...)
+	{
+		exit_thread = true;
+		// @TODO: join threads
+		throw;
+	}
+	// std::ofstream close on destruction because of RAII
 }
 

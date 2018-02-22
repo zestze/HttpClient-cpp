@@ -7,13 +7,13 @@ CXXFLAGS 	= -g -Wall $(INCLUDES) -std=c++14 -pthread
 LDFLAGS 	= -g -pthread
 LDLIBS 		= -lboost_system
 
-$(TARGET): client.o shared_methods.o
+$(TARGET): client.o shared.o
 
-$(TARGET).o: client.h shared_methods.h
+$(TARGET).o: client.h shared.h
 
-client.o: HttpRequest.h shared_methods.h
+client.o: HttpRequest.h shared.h
 
-shared_methods.o: 
+shared.o: 
 
 .PHONY: clean
 clean:

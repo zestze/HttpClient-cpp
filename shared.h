@@ -1,5 +1,5 @@
-#ifndef __SHARED_METHODS_H__
-#define __SHARED_METHODS_H__
+#ifndef __SHARED_H__
+#define __SHARED_H__
 
 #include <boost/asio.hpp>
 #include <string>

@@ -49,7 +49,7 @@
 #include <algorithm>
 
 #include "HttpRequest.h"
-#include "shared_methods.h"
+#include "shared.h"
 
 #ifndef __BUFF_SIZE__
 #define BUFF_SIZE 4096
@@ -57,6 +57,8 @@
 
 using String_Deq = std::deque<std::string>;
 using boost::asio::ip::tcp;
+
+void signal_handler(int signal);
 
 class Client {
 	public:
