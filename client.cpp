@@ -40,6 +40,15 @@ void Client::simple_download(std::ofstream& outfile, std::vector<char>& buff,
 	}
 }
 
+void Client::write_to_file(std::ofstream& outfile, std::pair<ByteRange, BufferPtr> pair)
+{
+	int len = pair.first.get_inclus_diff();
+	BufferPtr& buffptr = pair.second;
+
+	for (int i = 0; i < len; i++)
+		outfile << buffptr->at(i);
+}
+
 void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 		size_t len, std::vector<char>::iterator buff_pos)
 {
@@ -71,6 +80,45 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 		}
 	}
 
+	// @TODO: make threads and set them to work.
+	for (int i = 0; i < NUM_THREADS; i++) {
+		std::thread thr(&Client::worker_thread_run, this);
+		_threads.push_back(std::move(thr));
+	}
+
+	offset = len; //reset offset to where it was.
+	std::deque<std::pair<ByteRange, BufferPtr>> grabbed_results;
+
+	while (!exit_thread) {
+		// first, check if grabbed_results has an element with ByteRange.start
+		// matching the current file offset.
+		// if so, handle it (write to file), erase it, and then continue;
+		//
+		// if not, check if _results is empty, use conditional variable to wait
+		// for it to have something. IMPORTANT, make sure that conditional wait
+		// is timed, so to check if should exit_thread.
+		// if not empty, grab element.
+		// if element's ByteRange.start matches the offset, write it to
+		// file. Actually, already doing this at top of loop.
+		//
+
+
+		auto pred = [offset] (std::pair<ByteRange, BufferPtr> p)
+		{ return p.first.offset_matches(offset); };
+		auto it = std::find_if(grabbed_results.begin(),
+				grabbed_results.end(), pred);
+		if (it != grabbed_results.end()) {
+			write_to_file(outfile, *it);
+			offset += it->first.get_inclus_diff();
+			grabbed_results.erase(it);
+			continue;
+		}
+
+		// else, need to check if can read more.
+		// @TODO: left off here
+
+	}
+
 	// make threads
 
 	// populate queue
@@ -78,6 +126,19 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 	// wake threads
 	// manage file offset and writing
 	// clean up
+}
+
+/*
+	auto it = grabbed_results.begin();
+	for (; it != grabbed_results.end(); ++it) {
+		if (it->first.offset_matches(offset))
+			break;
+	}
+	return it;
+	*/
+
+void Client::worker_thread_run()
+{
 }
 
 void Client::poison_tasks()
@@ -123,7 +184,7 @@ void Client::run()
 
 		_file_size = parse_for_cont_length(header);
 
-		accepts_byte_ranges = false;
+		//accepts_byte_ranges = false;
 		if (!accepts_byte_ranges)
 			simple_download(outfile, buff, body_len, body_pos);
 		else

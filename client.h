@@ -85,7 +85,12 @@ class Client {
 				size_t len, std::vector<char>::iterator it);
 		void run();
 
+		void write_to_file(std::ofstream& outfile, std::pair<ByteRange, BufferPtr> pair);
+
 		void poison_tasks();
+
+		void worker_thread_run();
+
 	private:
 		std::unique_ptr<tcp::socket> _sockptr;
 		std::string _host_url;
