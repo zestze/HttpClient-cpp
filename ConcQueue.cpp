@@ -1,12 +1,39 @@
-#include "Conc_Queue.h"
+#include "ConcQueue.h"
 
-Conc_Queue::~Conc_Queue()
+template <class T>
+ConcQueue<T>::~ConcQueue()
 {
 	std::lock_guard<std::mutex> lock(_lock);
 	_queue.clear();
 }
 
-std::pair<Byte_Range, Buffer_ptr> Conc_Queue::get_result(int curr_offset)
+template <class T>
+T ConcQueue<T>::get()
+{
+	std::lock_guard<std::mutex> lock(_lock);
+	T retval = _queue.front();
+	_queue.pop_front();
+	return retval;
+}
+
+template <class T>
+void ConcQueue<T>::put(T t)
+{
+	std::lock_guard<std::mutex> lock(_lock);
+	_queue.push_back(t);
+}
+
+template <class T>
+void ConcQueue<T>::poison_self(T poison, size_t num_threads)
+{
+	std::lock_guard<std::mutex> lock(_lock);
+	_queue.clear();
+	for (size_t i = 0; i < num_threads; i++)
+		_queue.push_back(poison);
+}
+
+/*
+std::pair<Byte_Range, Buffer_ptr> ConcQueue::get_result(int curr_offset)
 {
 	std::lock_guard<std::mutex> lock(_lock);
 	auto it = _queue.begin();
@@ -26,13 +53,13 @@ std::pair<Byte_Range, Buffer_ptr> Conc_Queue::get_result(int curr_offset)
 	}
 }
 
-void Conc_Queue::put_result(Byte_Range br, Buffer_ptr bp)
+void ConcQueue::put_result(Byte_Range br, Buffer_ptr bp)
 {
 	std::lock_guard<std::mutex> lock(_lock);
 	_queue.push_back(std::make_pair(br, bp));
 }
 
-Byte_Range Conc_Queue::get_task()
+Byte_Range ConcQueue::get_task()
 {
 	std::lock_guard<std::mutex> lock(_lock);
 	for (auto it = _queue.begin(); it != _queue.end(); ++it) {
@@ -49,11 +76,13 @@ Byte_Range Conc_Queue::get_task()
 	}
 }
 
-void Conc_Queue::put_task(Byte_Range br)
+void ConcQueue::put_task(Byte_Range br)
 {
 }
+*/
 
-void Conc_Queue::poison_self(size_t num_threads)
+/*
+void ConcQueue::poison_self(size_t num_threads)
 {
 	std::lock_guard<std::mutex> lock(_lock);
 	_queue.clear();
@@ -63,4 +92,4 @@ void Conc_Queue::poison_self(size_t num_threads)
 		_queue.push_back(std::make_pair(br, bp));
 	}
 }
-
+*/

@@ -10,6 +10,10 @@
 #define BUFF_SIZE 4096
 #endif
 
+#ifndef POISON_
+#define POISON -2
+#endif
+
 using boost::asio::ip::tcp;
 
 std::deque<std::string> split_(std::string full_msg, std::string delim);

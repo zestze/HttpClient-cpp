@@ -49,9 +49,10 @@
 #include <algorithm>
 #include <thread>
 
-#include "Conc_Queue.h"
+#include "ConcQueue.h"
 #include "HttpRequest.h"
 #include "shared.h"
+#include "ByteRange.h"
 
 #ifndef BUFF_SIZE
 #define BUFF_SIZE 4096
@@ -61,8 +62,14 @@
 #define CHUNK_SIZE BUFF_SIZE
 #endif
 
-using String_Deq = std::deque<std::string>;
+#ifndef NUM_THREADS
+#define NUM_THREADS 4
+#endif
+
+//using String_Deq = std::deque<std::string>;
 using boost::asio::ip::tcp;
+
+using BufferPtr = std::shared_ptr<std::vector<char>>;
 
 void signal_handler(int signal);
 
@@ -71,18 +78,25 @@ class Client {
 		Client(std::string url, std::string file)
 			: _host_url{url}, _file_path{file} { }
 
+		~Client() = default;
+
 		void parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 				size_t len, std::vector<char>::iterator it);
 
 		void simple_download(std::ofstream& outfile, std::vector<char>& buff,
 				size_t len, std::vector<char>::iterator it);
 		void run();
+
+		void poison_tasks();
 	private:
 		std::unique_ptr<tcp::socket> _sockptr;
 		std::string _host_url;
 		std::string _file_path;
 		std::deque<std::thread> _threads;
-		Conc_Queue _conc_queue;
+		//ConcQueue _conc_queue;
+		// make two ConcQueue's.
+		ConcQueue<ByteRange> _tasks;
+		ConcQueue<std::pair<ByteRange, BufferPtr>> _results;
 		int _file_size;
 };
 

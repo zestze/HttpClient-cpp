@@ -4,16 +4,17 @@ CXX 		= clang++-5.0
 INCLUDES 	=
 CFLAGS 		= -g -Wall $(INCLUDES)
 CXXFLAGS 	= -g -Wall $(INCLUDES) -std=c++17 -pthread
+#CXXFLAGS 	= -g -O2 $(INCLUDES) -std=c++17 -pthread
 LDFLAGS 	= -g -pthread
 LDLIBS 		= -lboost_system
 
-$(TARGET): client.o shared.o Conc_Queue.o
+$(TARGET): client.o shared.o ConcQueue.o
 
 $(TARGET).o: client.h shared.h
 
-client.o: HttpRequest.h shared.h Conc_Queue.h
+client.o: HttpRequest.h shared.h ConcQueue.h ByteRange.h
 
-Conc_Queue.o:
+ConcQueue.o:
 
 shared.o: 
 

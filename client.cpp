@@ -52,26 +52,39 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 	//int last_offset = offset;
 	// every put is left-inclusive, right-exclusive i.e. [, )
 	// since a _file_size of 8 means the last byte is byte #7
+	// populate tasks
 	for (;;) {
 		offset += CHUNK_SIZE;
 		if (offset > _file_size) {
 			int end = _file_size;
 			// insert into queue
 			// q.put( [offset - CHUNK, end) )
-			Byte_Range br (offset - CHUNK_SIZE, end - 1);
+			ByteRange br (offset - CHUNK_SIZE, end - 1);
+			_tasks.put(br);
 			break;
 		}
 		else {
 			// insert CHUNK_SIZE into queue
 			// q.put( [offset - CHUNK, offset) )
+			ByteRange br (offset - CHUNK_SIZE, offset - 1);
+			_tasks.put(br);
 		}
 	}
+
+	// make threads
 
 	// populate queue
 	// make threads
 	// wake threads
 	// manage file offset and writing
 	// clean up
+}
+
+void Client::poison_tasks()
+{
+	size_t num_threads = _threads.size();
+	ByteRange poison (POISON, POISON);
+	_tasks.poison_self(poison, num_threads);
 }
 
 void Client::run()
@@ -116,19 +129,17 @@ void Client::run()
 			parallel_download(outfile, buff, body_len, body_pos);
 
 		if (exit_thread) {
-			// don't forget to poison threads.
+			poison_tasks();
 			for (std::thread& t : _threads)
 				t.join();
-			_threads.clear();
 		}
-
 	}
 	catch (...)
 	{
 		exit_thread = true;
+		poison_tasks();
 		for (std::thread& t : _threads)
 			t.join();
-		_threads.clear();
 		throw;
 	}
 	// std::ofstream close on destruction because of RAII
