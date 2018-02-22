@@ -123,6 +123,7 @@ void Client::run()
 
 		_file_size = parse_for_cont_length(header);
 
+		accepts_byte_ranges = false;
 		if (!accepts_byte_ranges)
 			simple_download(outfile, buff, body_len, body_pos);
 		else

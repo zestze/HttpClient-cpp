@@ -14,14 +14,14 @@ class ConcQueue {
 
 		// don't want to copy locks, undesired behavior
 		ConcQueue(const ConcQueue<T>& other) = delete;
-		ConcQueue(const ConcQueue<T>&& other)
+		ConcQueue(ConcQueue<T>&& other)
 		{
 			_lock = std::move(other._lock);
 			_queue = std::move(other._queue);
 		}
 
 		ConcQueue& operator=(const ConcQueue& other) = delete;
-		ConcQueue& operator=(const ConcQueue&& other)
+		ConcQueue& operator=(ConcQueue&& other)
 		{
 			_lock = std::move(other._lock);
 			_queue = std::move(other._queue);
