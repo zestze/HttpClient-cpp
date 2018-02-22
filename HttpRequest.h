@@ -19,11 +19,12 @@ class HttpRequest {
 			_range = "";
 		}
 
+		// don't want anyone to use default constructor for now
 		HttpRequest() =  delete;
 
 		void simplify_accept() { _accept = "*/*"; }
-		void set_keepalive() { _connection_type = "keep-alive"; }
-		void set_close() { _connection_type = "close"; }
+		void set_keepalive()   { _connection_type = "keep-alive"; }
+		void set_close()       { _connection_type = "close"; }
 
 		void set_range(int start, int end)
 		{
@@ -47,8 +48,6 @@ class HttpRequest {
 		std::string _host;
 		std::string _connection_type;
 		std::string _range;
-		// members that probably won't change
-		//const std::string CRLF = "\r\n";
 		std::string _accept;
 		std::string _accept_encoding;
 		std::string _accept_lang;

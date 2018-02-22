@@ -155,7 +155,8 @@ void simple_download(std::ofstream& outfile, tcp::socket& socket, std::vector<ch
 	}
 }
 
-void parallel_download()
+void parallel_download(std::ofstream& outfile, tcp::socket& socket, std::vector<char>& buff,
+		size_t len, std::vector<char>::iterator it)
 {
 }
 
@@ -188,7 +189,7 @@ void run(std::string url, std::string filepath)
 	if (!accepts_byte_ranges)
 		simple_download(outfile, socket, buff, body_len, body_pos);
 	else
-		parallel_download();
+		parallel_download(outfile, socket, buff, body_len, body_pos);
 
 	// @TODO: use accepts_byte_ranges to determine if requesting chunk or not
 	//outfile << std::string(crlf_pos + 4, buff.end());
