@@ -57,6 +57,10 @@
 #define BUFF_SIZE 4096
 #endif
 
+#ifndef CHUNK_SIZE
+#define CHUNK_SIZE BUFF_SIZE
+#endif
+
 using String_Deq = std::deque<std::string>;
 using boost::asio::ip::tcp;
 
@@ -78,6 +82,8 @@ class Client {
 		std::string _host_url;
 		std::string _file_path;
 		std::deque<std::thread> _threads;
+		Conc_Queue _conc_queue;
+		int _file_size;
 };
 
 #endif

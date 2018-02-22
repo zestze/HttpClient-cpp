@@ -15,23 +15,42 @@
 #endif
 
 struct Byte_Range {
+	Byte_Range()
+		:start{0}, stop{0} { }
+	Byte_Range(int a, int b)
+		:start{a}, stop{b} { }
+	Byte_Range(const Byte_Range& other) { start = other.start; stop = other.stop; }
+	Byte_Range& operator= (const Byte_Range& rhs)
+	{
+		if (this == &rhs)
+			return *this;
+		start = rhs.start;
+		stop = rhs.stop;
+		return *this;
+	}
+
 	int start;
 	int stop;
 };
 
 using Buffer_ptr = std::shared_ptr<std::vector<char>>;
 
+template <typename T>
 class Conc_Queue {
 	public:
+		Conc_Queue() = default;
 
 		// don't want to copy locks, undesired behavior
 		Conc_Queue(const Conc_Queue& other) = delete;
 
 		~Conc_Queue();
 
-		std::pair<Byte_Range, Buffer_ptr> get(int curr_offset);
+		// if an element has a ByteRange that matches 
+		std::pair<Byte_Range, Buffer_ptr> get_result(int curr_offset);
 
-		void put(Byte_Range br, Buffer_ptr bp);
+		void put_result(Byte_Range br, Buffer_ptr bp);
+
+		Byte_Range get_task();
 
 		void poison_self(size_t num_threads);
 

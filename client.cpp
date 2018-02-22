@@ -16,12 +16,12 @@ void set_globals()
 }
 
 void Client::simple_download(std::ofstream& outfile, std::vector<char>& buff,
-		size_t len, std::vector<char>::iterator it)
+		size_t len, std::vector<char>::iterator buff_pos)
 {
 	tcp::socket& socket = *_sockptr;
 	size_t i = 0;
-	for (; it != buff.end() && i < len; ++it, ++i)
-		outfile << *it;
+	for (; buff_pos != buff.end() && i < len; ++buff_pos, ++i)
+		outfile << *buff_pos;
 
 	// lazy solution @TODO: grab content-length and parse that instead of
 	// reading until none left
@@ -41,8 +41,37 @@ void Client::simple_download(std::ofstream& outfile, std::vector<char>& buff,
 }
 
 void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
-		size_t len, std::vector<char>::iterator it)
+		size_t len, std::vector<char>::iterator buff_pos)
 {
+	int offset = len; // bytes read thus far
+	size_t i = 0;
+	for (; buff_pos != buff.end() && i < len; ++buff_pos, ++i)
+		outfile << *buff_pos;
+
+	// @TODO: logic needs to be verified, by hand if possible.
+	//int last_offset = offset;
+	// every put is left-inclusive, right-exclusive i.e. [, )
+	// since a _file_size of 8 means the last byte is byte #7
+	for (;;) {
+		offset += CHUNK_SIZE;
+		if (offset > _file_size) {
+			int end = _file_size;
+			// insert into queue
+			// q.put( [offset - CHUNK, end) )
+			Byte_Range br (offset - CHUNK_SIZE, end - 1);
+			break;
+		}
+		else {
+			// insert CHUNK_SIZE into queue
+			// q.put( [offset - CHUNK, offset) )
+		}
+	}
+
+	// populate queue
+	// make threads
+	// wake threads
+	// manage file offset and writing
+	// clean up
 }
 
 void Client::run()
@@ -78,12 +107,16 @@ void Client::run()
 		bool accepts_byte_ranges = check_accepts_byte_ranges(header);
 		size_t body_len = len - header.length() - 4; // 4 bc CRLFCRLF is 4 characters long
 		auto body_pos = crlf_pos + 4; // 4 bc CRLFCRLF is 4 characters long
+
+		_file_size = parse_for_cont_length(header);
+
 		if (!accepts_byte_ranges)
 			simple_download(outfile, buff, body_len, body_pos);
 		else
 			parallel_download(outfile, buff, body_len, body_pos);
 
 		if (exit_thread) {
+			// don't forget to poison threads.
 			for (std::thread& t : _threads)
 				t.join();
 			_threads.clear();

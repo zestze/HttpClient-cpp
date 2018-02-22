@@ -121,5 +121,3 @@ int parse_for_cont_length(std::string httpHeader)
 	num.erase(end_pos, num.end());
 	return std::stoi(num);
 }
-
-
