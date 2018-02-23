@@ -1,4 +1,5 @@
 #include "client.h"
+#include <type_traits>
 
 // ************** GLOBALS *************
 std::atomic<bool> exit_thread;
@@ -119,26 +120,19 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 
 	}
 
-	// make threads
 
-	// populate queue
-	// make threads
+	// populate queue @DONE
+	// make threads @DONE
 	// wake threads
 	// manage file offset and writing
 	// clean up
 }
 
-/*
-	auto it = grabbed_results.begin();
-	for (; it != grabbed_results.end(); ++it) {
-		if (it->first.offset_matches(offset))
-			break;
-	}
-	return it;
-	*/
-
 void Client::worker_thread_run()
 {
+	/* can omit this-> when accessing class members and functions */
+	//std::string file_name = _file_path;
+	//std::string file_path = this->_file_path;
 }
 
 void Client::poison_tasks()
