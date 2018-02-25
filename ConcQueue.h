@@ -5,6 +5,15 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <atomic>
+//#include <optional>
+#include <experimental/optional>
+
+//@TODO: maybe build condition variable into the ConcQueue class?
+// that way, get will block until the list has something in it.
+//@TODO: can have variations on get()... with blocking_get() and timed_get()
+//
+//@TODO: put_and_wait(), get_and_notify() additional methods
 
 
 template <class T>
@@ -33,11 +42,14 @@ class ConcQueue {
 			_queue.clear();
 		}
 
-		T get()
+		std::experimental::optional<T> get()
 		{
 			std::lock_guard<std::mutex> lock(_lock);
+			if (_size == 0)
+				return std::experimental::nullopt;
 			T retval = _queue.front();
 			_queue.pop_front();
+			_size--;
 			return retval;
 		}
 
@@ -45,6 +57,15 @@ class ConcQueue {
 		{
 			std::lock_guard<std::mutex> lock(_lock);
 			_queue.push_back(t);
+			_size++;
+		}
+
+		std::experimental::optional<T> get_and_notify()
+		{
+		}
+
+		void put_and_wait(T t)
+		{
 		}
 
 		void poison_self(T poison, size_t num_threads)
@@ -53,11 +74,15 @@ class ConcQueue {
 			_queue.clear();
 			for (size_t i = 0; i < num_threads; i++)
 				_queue.push_back(poison);
+			_size = num_threads;
 		}
+
+		bool is_empty() { return _size == 0; }
 
 	private:
 		std::deque<T> _queue;
 		std::mutex _lock;
+		std::atomic<int> _size;
 };
 
 #endif

@@ -1,4 +1,4 @@
-#include "client.h"
+#include "Client.h"
 #include <type_traits>
 
 // ************** GLOBALS *************
@@ -106,8 +106,10 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 
 		auto pred = [offset] (std::pair<ByteRange, BufferPtr> p)
 		{ return p.first.offset_matches(offset); };
+
 		auto it = std::find_if(grabbed_results.begin(),
 				grabbed_results.end(), pred);
+
 		if (it != grabbed_results.end()) {
 			write_to_file(outfile, *it);
 			offset += it->first.get_inclus_diff();
@@ -133,6 +135,47 @@ void Client::worker_thread_run()
 	/* can omit this-> when accessing class members and functions */
 	//std::string file_name = _file_path;
 	//std::string file_path = this->_file_path;
+
+	// psuedocode:
+	// make a new socket to the server
+	// loop, and grab whatever is on queue. if it's empty, break loop, and exit
+	// if it's not empty, handle by making an HTTPrEQUEST
+	// then read from socket into the buffer. Once done, push to the queue with
+	// the read stuff.
+	// @TODO: put limits, on a special conc_queue put() call, that with a conditional
+	// variable, makes threads sleep while queue is a certain size.
+	// put_and_wait()
+	// get_and_notify()
+	// which are both, only intended to be used with the 'tasks' queue
+	//
+
+	tcp::socket socket = connect_to_server(_host_url);
+
+	for (;;) {
+		std::experimental::optional<ByteRange> task = _tasks.get();
+		if (task == std::experimental::nullopt)
+			break;
+
+		HttpRequest req(_host_url, _file_path);
+		req.set_keepalive();
+		req.set_range(task->first, task->last);
+
+		try_writing_to_sock(socket, req.to_string());
+
+		std::vector<char> buff(BUFF_SIZE, '\0');
+		boost::system::error_code ec;
+		size_t len = socket.read_some(boost::asio::buffer(buff), ec);
+		auto crlf_pos = find_crlfsuffix_in(buff); // 'CRLFCRLF'
+
+		//@TODO: handle http response here, check if message needs to be
+		//resent, or anything else.
+		//throw it all in a function, and a while loop.
+		//
+		//
+		//@TODO: now having issues, how does the buffer survive past the end
+		//of this for loop? Add it to some random list? or store it somewhere?
+		//at some point, if it's not deleted, there will be a resource leak.
+	}
 }
 
 void Client::poison_tasks()

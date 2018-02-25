@@ -33,6 +33,8 @@
  *
  * @TODO: implement a DASH?
  *
+ * @TODO: instead of using a shared_ptr, use unique_ptr with move semantics
+ *
  */
 
 #ifndef __CLIENT_H__
@@ -48,6 +50,7 @@
 #include <array>
 #include <algorithm>
 #include <thread>
+#include <experimental/optional>
 
 #include "ConcQueue.h"
 #include "HttpRequest.h"
@@ -59,7 +62,7 @@
 #endif
 
 #ifndef CHUNK_SIZE
-#define CHUNK_SIZE BUFF_SIZE
+#define CHUNK_SIZE (BUFF_SIZE / 2)
 #endif
 
 #ifndef NUM_THREADS
@@ -70,6 +73,7 @@
 using boost::asio::ip::tcp;
 
 using BufferPtr = std::shared_ptr<std::vector<char>>;
+//@TODO: instead of using shared_ptr, use a unique_ptr with move semantics
 
 void signal_handler(int signal);
 

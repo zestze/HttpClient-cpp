@@ -1,4 +1,4 @@
-TARGET 		= main
+TARGET 		= Main
 CC 		= clang++-5.0
 CXX 		= clang++-5.0
 INCLUDES 	=
@@ -8,11 +8,11 @@ CXXFLAGS 	= -g -Wall $(INCLUDES) -std=c++17 -pthread
 LDFLAGS 	= -g -pthread
 LDLIBS 		= -lboost_system
 
-$(TARGET): client.o shared.o
+$(TARGET): Client.o shared.o
 
-$(TARGET).o: client.h shared.h
+$(TARGET).o: Client.h shared.h
 
-client.o: HttpRequest.h shared.h ConcQueue.h ByteRange.h
+Client.o: HttpRequest.h shared.h ConcQueue.h ByteRange.h
 
 shared.o: 
 

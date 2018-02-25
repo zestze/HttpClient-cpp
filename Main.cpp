@@ -1,4 +1,4 @@
-#include "client.h"
+#include "Client.h"
 #include "shared.h"
 
 int main(int argc, char **argv)
