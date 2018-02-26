@@ -55,6 +55,13 @@ class ConcQueue {
 			return retval;
 		}
 
+		void put_front(T t)
+		{
+			std::lock_guard<std::mutex> lock(_lock);
+			_queue.push_front(t);
+			_size++;
+		}
+
 		void put(T t)
 		{
 			std::lock_guard<std::mutex> lock(_lock);

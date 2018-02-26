@@ -15,6 +15,7 @@ struct ByteRange {
 
 	~ByteRange() = default;
 
+	//@TODO: change from int to size_t
 	int get_inclus_diff() const { return last - first + 1; }
 
 	bool offset_matches(int offset) { return first == offset; }

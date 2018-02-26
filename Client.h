@@ -52,6 +52,7 @@
 #include <thread>
 #include <experimental/optional>
 #include <chrono>
+#include <condition_variable>
 
 #include "ConcQueue.h"
 #include "HttpRequest.h"
@@ -110,6 +111,10 @@ class Client {
 				_dest_file << buff[i];
 		}
 
+		bool sync_write(ByteRange task,
+				std::vector<char>::iterator start_pos,
+				std::vector<char>::iterator end_pos);
+
 		void worker_thread_run();
 
 		void parallel_download();
@@ -124,8 +129,9 @@ class Client {
 		std::string _host_url;
 		std::string _file_path;
 		int _file_size;
-		int _offset;
+		std::atomic<int> _offset;
 
+		std::condition_variable _file_cv;
 		std::ofstream _dest_file;
 		std::mutex    _file_lock;
 

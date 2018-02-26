@@ -35,10 +35,10 @@ void Client::parallel_download()
 		}
 	}
 
-	//for (int i = 0; i < NUM_THREADS; i++) {
-		//std::thread thr(&Client::worker_thread_run, this);
-		//_threads.push_back(std::move(thr));
-	//}
+	for (int i = 0; i < NUM_THREADS; i++) {
+		std::thread thr(&Client::worker_thread_run, this);
+		_threads.push_back(std::move(thr));
+	}
 
 	for (;;) {
 		if (exit_thread || _offset == _file_size)
@@ -60,10 +60,10 @@ void Client::worker_thread_run()
 	tcp::socket socket = connect_to_server(_host_url, _io_service);
 	std::vector<char> sock_buff(BUFF_SIZE, '\0');
 	for (;;) {
+		if (_offset == _file_size || exit_thread)
+			break;
 		std::experimental::optional<ByteRange> task = _tasks.get();
 		if (task == std::experimental::nullopt || is_poison(*task))
-			break;
-		if (_offset == _file_size || exit_thread)
 			break;
 
 		HttpRequest req (_host_url, _file_path);
@@ -85,14 +85,45 @@ void Client::worker_thread_run()
 		header_len += 4;
 
 		len -= header_len;
+		if (static_cast<int>(len) != task->get_inclus_diff())
+			throw std::string("len != inclusive_diff()");
+
+		bool success = sync_write(*task, crlf_pos + 4, sock_buff.end());
+		while (!success && !exit_thread)
+			success = sync_write(*task, crlf_pos + 4, sock_buff.end());
+
+		/*
 		auto sb_it = crlf_pos + 4;
 		for (int i = 0; i < task->get_inclus_diff(); i++)
 			_dest_file << *sb_it++;
 
 		_offset += task->get_inclus_diff();
+		*/
 		//@TODO: doesn't synchronize access to file writer.
 		//Need to figure that out.
 	}
+}
+
+bool Client::sync_write(ByteRange task, std::vector<char>::iterator start_pos,
+		std::vector<char>::iterator end_pos)
+{
+	std::unique_lock<std::mutex> lock(_file_lock);
+
+	std::atomic<int>& offset = _offset;
+	_file_cv.wait_for(lock, 1s,
+			[&task, &offset]{return task.offset_matches(offset);});
+
+	if (!task.offset_matches(_offset))
+		return false;
+
+	for (int i = 0; i < task.get_inclus_diff(); i++) {
+		if (start_pos == end_pos)
+			throw std::string("start_pos == end_poos");
+		_dest_file << *start_pos++;
+	}
+	_offset += task.get_inclus_diff();
+
+	return true;
 }
 
 void Client::simple_download()
@@ -161,7 +192,7 @@ void Client::run()
 
 		_file_size = parse_for_cont_length(header);
 
-		accepts_byte_ranges = false;
+		//accepts_byte_ranges = false;
 		if (!accepts_byte_ranges)
 			simple_download();
 		else
