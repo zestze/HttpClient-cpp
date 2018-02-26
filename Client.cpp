@@ -83,17 +83,6 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 	std::vector<std::pair<ByteRange, BufferPtr>> grabbed_results;
 
 	while (!exit_thread) {
-		// first, check if grabbed_results has an element with ByteRange.start
-		// matching the current file offset.
-		// if so, handle it (write to file), erase it, and then continue;
-		//
-		// if not, check if _results is empty, use conditional variable to wait
-		// for it to have something. IMPORTANT, make sure that conditional wait
-		// is timed, so to check if should exit_thread.
-		// if not empty, grab element.
-		// if element's ByteRange.start matches the offset, write it to
-		// file. Actually, already doing this at top of loop.
-		//
 
 		if (offset == _file_size)
 			break;
@@ -110,9 +99,6 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 			grabbed_results.erase(it);
 			continue;
 		}
-
-		// else, need to check if can read more.
-		// @TODO: left off here
 
 		auto result = _results.get();
 		if (result == std::experimental::nullopt) {
@@ -131,12 +117,6 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 		if (t.joinable())
 			t.join();
 	}
-
-	// populate queue @DONE
-	// make threads @DONE
-	// wake threads
-	// manage file offset and writing
-	// clean up
 }
 
 bool Client::is_poison(const ByteRange task)
@@ -249,8 +229,10 @@ void Client::run()
 	{
 		exit_thread = true;
 		poison_tasks();
-		for (std::thread& t : _threads)
-			t.join();
+		for (std::thread& t : _threads) {
+			if (t.joinable())
+				t.join();
+		}
 		throw;
 	}
 	// std::ofstream close on destruction because of RAII
