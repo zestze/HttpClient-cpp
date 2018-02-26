@@ -3,7 +3,6 @@
 
 #include <boost/asio.hpp>
 #include <string>
-#include <deque>
 #include <array>
 #include <vector>
 

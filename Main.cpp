@@ -10,10 +10,11 @@ int main(int argc, char **argv)
 	}
 	try {
 		// argument formatting
-		std::deque<std::string> parts = split_(argv[1], "/");
+		std::vector<std::string> parts = split_(argv[1], "/");
 
 		std::string url_str = parts[0];
-		parts.pop_front();
+		//parts.pop_front();
+		parts.erase(parts.begin());
 
 		std::string filepath_str = join_(parts, "/");
 
