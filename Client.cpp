@@ -58,7 +58,8 @@ void Client::parallel_download()
 void Client::worker_thread_run()
 {
 	tcp::socket socket = connect_to_server(_host_url, _io_service);
-	std::vector<char> sock_buff(BUFF_SIZE, '\0');
+	//std::vector<char> sock_buff(BUFF_SIZE, '\0');
+	std::vector<char> sock_buff; //@TODO: change back to pre-allocate
 	for (;;) {
 		if (_offset == _file_size || exit_thread)
 			break;
@@ -69,19 +70,28 @@ void Client::worker_thread_run()
 		HttpRequest req (_host_url, _file_path);
 		req.set_keepalive();
 		req.set_range(task->first, task->last);
+		req.simplify_accept();
 
 		std::cout << "HttpRequest:\n";
 		std::cout << req.to_string() << std::endl;
 
 		try_writing_to_sock(socket, req.to_string());
 
+		/*
 		boost::system::error_code ec;
 		size_t len = socket.read_some(boost::asio::buffer(sock_buff), ec);
+		*/
+		size_t len = try_reading(sock_buff, socket, task->get_inclus_diff());
+
 		auto crlf_pos = find_crlfsuffix_in(sock_buff);
 
 		int header_len = 0;
-		for (auto it = sock_buff.begin(); it != crlf_pos && it != sock_buff.end(); ++it)
+		std::cout << "Header response:\n";
+		for (auto it = sock_buff.begin(); it != crlf_pos && it != sock_buff.end(); ++it) {
+			std::cout << *it;
 			header_len++;
+		}
+		std::cout << std::endl;
 		header_len += 4;
 
 		len -= header_len;
@@ -102,6 +112,53 @@ void Client::worker_thread_run()
 		//@TODO: doesn't synchronize access to file writer.
 		//Need to figure that out.
 	}
+}
+
+// @NOTE: instead, do first read outside of loop. Already know how many bytes of data
+// going to read, so count how many bytes of header there are, add that (including crlfcrlf)
+// to total bytes_to_read, and read that many.
+size_t Client::try_reading(std::vector<char>& main_buff, tcp::socket& socket, size_t payload_size)
+{
+	std::vector<char> temp_buff (BUFF_SIZE, '\0');
+	boost::system::error_code ec;
+	//main_buff.clear(); //@TODO: get rid of this and push_back, manipulate by position instead
+
+	size_t len = socket.read_some(boost::asio::buffer(temp_buff));
+
+	auto crlf_pos = find_crlfsuffix_in(temp_buff);
+
+	int header_len = 0;
+	for (auto it = temp_buff.begin(); it != crlf_pos; ++it)
+		header_len++;
+
+	// total length to read = header_len + 4 + payload_size
+	// amount read thus far = len
+	size_t amount_left_to_read = (header_len + 4 + payload_size) - len;
+
+	// put data into main_buff (including header, for now)
+	main_buff.clear();
+	for (size_t i = 0; i < len; i++)
+		main_buff.push_back(temp_buff[i]);
+
+	len = boost::asio::read(socket, boost::asio::buffer(temp_buff),
+			boost::asio::transfer_exactly(amount_left_to_read));
+
+	for (size_t i = 0; i < len; i++)
+		main_buff.push_back(temp_buff[i]);
+
+	/*
+	for (;;) {
+		len = socket.read_some(boost::asio::buffer(temp_buff), ec);
+		if (ec == boost::asio::error::eof)
+			break;
+		else if (ec)
+			throw boost::system::system_error(ec);
+		for (size_t i = 0; i < len; i++)
+			main_buff.push_back(temp_buff[i]);
+	}
+	*/
+
+	return main_buff.size();
 }
 
 bool Client::sync_write(ByteRange task, std::vector<char>::iterator start_pos,

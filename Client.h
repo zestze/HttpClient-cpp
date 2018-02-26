@@ -115,6 +115,9 @@ class Client {
 				std::vector<char>::iterator start_pos,
 				std::vector<char>::iterator end_pos);
 
+		size_t try_reading(std::vector<char>& main_buff, tcp::socket& socket,
+				size_t payload_size);
+
 		void worker_thread_run();
 
 		void parallel_download();
