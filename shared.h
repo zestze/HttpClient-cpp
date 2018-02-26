@@ -5,6 +5,7 @@
 #include <string>
 #include <deque>
 #include <array>
+#include <vector>
 
 #ifndef BUFF_SIZE
 #define BUFF_SIZE 4096
@@ -16,12 +17,12 @@
 
 using boost::asio::ip::tcp;
 
-std::deque<std::string> split_(std::string full_msg, std::string delim);
+std::vector<std::string> split_(std::string full_msg, std::string delim);
 
 // if li = ["abc", "def", "ghi"]
 // then a call with delim = "/" will result in:
 // "/abc/def/ghi
-std::string join_(std::deque<std::string> msgs, std::string delim);
+std::string join_(std::vector<std::string> msgs, std::string delim);
 
 
 // Intended for small messages, will probably not be used here.

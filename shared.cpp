@@ -1,8 +1,8 @@
 #include "shared.h"
 
-std::deque<std::string> split_(std::string full_msg, std::string delim)
+std::vector<std::string> split_(std::string full_msg, std::string delim)
 {
-	std::deque<std::string> msgs;
+	std::vector<std::string> msgs;
 	std::size_t offset = 0;
 	std::size_t endpos = 0;
 	std::size_t len    = 0;
@@ -26,7 +26,7 @@ std::deque<std::string> split_(std::string full_msg, std::string delim)
 	return msgs;
 }
 
-std::string join_(std::deque<std::string> msgs, std::string delim)
+std::string join_(std::vector<std::string> msgs, std::string delim)
 {
 	std::string full_msg;
 	for (std::string msg : msgs) {
