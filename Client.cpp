@@ -33,8 +33,7 @@ void Client::write_to_file(std::ofstream& outfile, const std::pair<ByteRange, Bu
 //
 // @TODO: first http request asks for entire file. So socket probably gets messed up
 // with that. Instead, maybe send a HEAD request?
-void Client::parallel_download(std::ofstream& outfile/*, std::vector<char>& buff,
-		size_t body_len, std::vector<char>::iterator buff_pos */)
+void Client::parallel_download()
 {
 	//@TODO: honestly, these 4 lines can be put back in the calling function
 	/*
@@ -244,8 +243,7 @@ void Client::poison_tasks()
 	_tasks.poison_self(poison, num_threads);
 }
 
-void Client::simple_download(std::ofstream& outfile/*, std::vector<char>& buff,
-		size_t len, std::vector<char>::iterator buff_pos*/)
+void Client::simple_download()
 {
 	tcp::socket socket = connect_to_server(_host_url);
 
@@ -263,19 +261,19 @@ void Client::simple_download(std::ofstream& outfile/*, std::vector<char>& buff,
 	size_t body_len = len - header.length() - 4;
 	auto body_pos = crlf_pos + 4;
 	for (size_t i = 0; body_pos != buff.end() && i < body_len; ++body_pos, ++i)
-		outfile << *body_pos;
+		_dest_file << *body_pos;
 
 	while (!exit_thread) {
-		//for (char& c : buff)
-			//c = '\0';
 		len = socket.read_some(boost::asio::buffer(buff), ec);
 		if (ec == boost::asio::error::eof)
 			break;
 		else if (ec)
 			throw boost::system::system_error(ec);
-		for (size_t i = 0; i < len; i++)
-			outfile << buff[i];
+		write_to_file(buff, len);
+		//for (size_t i = 0; i < len; i++)
+			//outfile << buff[i];
 	}
+	std::cout << "end of simple_download" << std::endl;
 }
 
 void Client::run()
@@ -287,8 +285,9 @@ void Client::run()
 		set_globals();
 		std::signal(SIGINT, signal_handler);
 
-		_sockptr = std::make_unique<tcp::socket>(connect_to_server(_host_url));
-		tcp::socket& socket = *_sockptr; //@TODO: this _sockptr is useful for the large part.
+		//_sockptr = std::make_unique<tcp::socket>(connect_to_server(_host_url));
+		//tcp::socket& socket = *_sockptr; //@TODO: this _sockptr is useful for the large part.
+		tcp::socket socket = connect_to_server(_host_url);
 
 		HttpRequest req (_host_url, _file_path);
 		req.set_head();
@@ -296,10 +295,10 @@ void Client::run()
 		try_writing_to_sock(socket, req.to_string());
 
 		// open file, read from socket and write to file
-		std::ofstream outfile;
+		//std::ofstream outfile;
 		auto temp = split_(_file_path, "/");
 		std::string file_name = temp.back();
-		outfile.open(file_name, std::ios::out | std::ios::binary);
+		_dest_file.open(file_name, std::ios::out | std::ios::binary);
 
 		std::vector<char> buff (BUFF_SIZE, '\0');
 		boost::system::error_code ec;
@@ -318,13 +317,17 @@ void Client::run()
 
 		accepts_byte_ranges = false;
 		if (!accepts_byte_ranges)
-			simple_download(outfile);
+			simple_download();
 		else
-			parallel_download(outfile);
+			parallel_download();
+
+		std::cout << "finished reading" << std::endl;
+		outfile.close();
 
 	}
 	catch (...)
 	{
+		std::cerr << "caught error in Client::run()" << std::endl;
 		exit_thread = true;
 		poison_tasks();
 		for (std::thread& t : _threads) {
