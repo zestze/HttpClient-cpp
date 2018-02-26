@@ -167,7 +167,8 @@ void Client::worker_thread_run()
 			*fb_it++ = *sb_it++;
 
 		BufferPtr buffptr = std::make_unique<std::vector<char>>(file_buff);
-		_results.put({*task, std::move(buffptr)});
+		std::pair<ByteRange, BufferPtr> result = {*task, std::move(buffptr)};
+		_results.put(std::forward<std::pair<ByteRange, BufferPtr>>(result));
 		//@TODO: chhange to put_and_wait.
 		//inside put_and_wait, call std::move() ?
 	}

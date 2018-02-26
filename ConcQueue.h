@@ -47,7 +47,7 @@ class ConcQueue {
 			std::lock_guard<std::mutex> lock(_lock);
 			if (_size == 0)
 				return std::experimental::nullopt;
-			T retval = _queue.front();
+			T retval = std::move(_queue.front());
 			_queue.pop_front();
 			_size--;
 			return retval;
