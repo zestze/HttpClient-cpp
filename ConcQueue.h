@@ -38,8 +38,9 @@ class ConcQueue {
 
 		~ConcQueue()
 		{
-			std::lock_guard<std::mutex> lock(_lock);
+			std::unique_lock<std::mutex> lock(_lock);
 			_queue.clear();
+			lock.unlock(); //@NOTE: bc worried destructor is getting called before leaving execcution block
 		}
 
 		std::experimental::optional<T> get()

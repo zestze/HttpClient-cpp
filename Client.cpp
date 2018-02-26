@@ -258,8 +258,8 @@ void Client::simple_download()
 		throw "no crlf suffix";
 
 	std::string header (buff.begin(), crlf_pos);
-	size_t body_len = len - header.length() - 4;
-	auto body_pos = crlf_pos + 4;
+	size_t body_len = len - header.length() - 4; // 4 because CRLFCRLF
+	auto body_pos = crlf_pos + 4; // 4 because CRLFCRLF
 	for (size_t i = 0; body_pos != buff.end() && i < body_len; ++body_pos, ++i)
 		_dest_file << *body_pos;
 
@@ -285,8 +285,6 @@ void Client::run()
 		set_globals();
 		std::signal(SIGINT, signal_handler);
 
-		//_sockptr = std::make_unique<tcp::socket>(connect_to_server(_host_url));
-		//tcp::socket& socket = *_sockptr; //@TODO: this _sockptr is useful for the large part.
 		tcp::socket socket = connect_to_server(_host_url);
 
 		HttpRequest req (_host_url, _file_path);
@@ -294,15 +292,13 @@ void Client::run()
 		//req.set_keepalive();
 		try_writing_to_sock(socket, req.to_string());
 
-		// open file, read from socket and write to file
-		//std::ofstream outfile;
 		auto temp = split_(_file_path, "/");
 		std::string file_name = temp.back();
 		_dest_file.open(file_name, std::ios::out | std::ios::binary);
 
 		std::vector<char> buff (BUFF_SIZE, '\0');
 		boost::system::error_code ec;
-		size_t len = socket.read_some(boost::asio::buffer(buff), ec);
+		socket.read_some(boost::asio::buffer(buff), ec);
 
 		auto crlf_pos = find_crlfsuffix_in(buff); // note: position of CRLFCRLF
 		if (crlf_pos == buff.end())
@@ -310,8 +306,6 @@ void Client::run()
 
 		std::string header (buff.begin(), crlf_pos);
 		bool accepts_byte_ranges = check_accepts_byte_ranges(header);
-		//size_t body_len = len - header.length() - 4; // 4 bc CRLFCRLF is 4 characters long
-		//auto body_pos = crlf_pos + 4; // 4 bc CRLFCRLF is 4 characters long
 
 		_file_size = parse_for_cont_length(header);
 
@@ -322,7 +316,7 @@ void Client::run()
 			parallel_download();
 
 		std::cout << "finished reading" << std::endl;
-		outfile.close();
+		_dest_file.close();
 
 	}
 	catch (...)
