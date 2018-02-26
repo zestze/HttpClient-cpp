@@ -60,30 +60,20 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 	for (; buff_pos != buff.end() && i < body_len; ++buff_pos, ++i)
 		outfile << *buff_pos;
 
-	// @TODO: logic needs to be verified, by hand if possible.
-	//int last_offset = offset;
-	// every put is left-inclusive, right-exclusive i.e. [, )
-	// since a _file_size of 8 means the last byte is byte #7
-	// populate tasks
 	for (;;) {
 		offset += CHUNK_SIZE;
 		if (offset > _file_size) {
 			int end = _file_size;
-			// insert into queue
-			// q.put( [offset - CHUNK, end) )
 			ByteRange br (offset - CHUNK_SIZE, end - 1);
 			_tasks.put(br);
 			break;
 		}
 		else {
-			// insert CHUNK_SIZE into queue
-			// q.put( [offset - CHUNK, offset) )
 			ByteRange br (offset - CHUNK_SIZE, offset - 1);
 			_tasks.put(br);
 		}
 	}
 
-	// @TODO: make threads and set them to work.
 	for (int i = 0; i < NUM_THREADS; i++) {
 		std::thread thr(&Client::worker_thread_run, this);
 		_threads.push_back(std::move(thr));
@@ -105,7 +95,8 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 		// file. Actually, already doing this at top of loop.
 		//
 
-		//if (k
+		if (offset == _file_size)
+			break;
 
 		auto pred = [offset] (std::pair<ByteRange, BufferPtr> p)
 		{ return p.first.offset_matches(offset); };
@@ -123,8 +114,23 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 		// else, need to check if can read more.
 		// @TODO: left off here
 
+		auto result = _results.get();
+		if (result == std::experimental::nullopt) {
+			std::this_thread::sleep_for(1s);
+			continue;
+		}
+
+		grabbed_results.push_back(std::move(*result));
+
 	}
 
+	if (exit_thread)
+		poison_tasks();
+
+	for (std::thread& t : _threads) {
+		if (t.joinable())
+			t.join();
+	}
 
 	// populate queue @DONE
 	// make threads @DONE
@@ -133,31 +139,21 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 	// clean up
 }
 
+bool Client::is_poison(const ByteRange task)
+{
+	if (task.first == POISON || task.last == POISON)
+		return true;
+	return false;
+}
+
 void Client::worker_thread_run()
 {
-	/* can omit this-> when accessing class members and functions */
-	//std::string file_name = _file_path;
-	//std::string file_path = this->_file_path;
-
-	// psuedocode:
-	// make a new socket to the server
-	// loop, and grab whatever is on queue. if it's empty, break loop, and exit
-	// if it's not empty, handle by making an HTTPrEQUEST
-	// then read from socket into the buffer. Once done, push to the queue with
-	// the read stuff.
-	// @TODO: put limits, on a special conc_queue put() call, that with a conditional
-	// variable, makes threads sleep while queue is a certain size.
-	// put_and_wait()
-	// get_and_notify()
-	// which are both, only intended to be used with the 'tasks' queue
-	//
-
 	tcp::socket socket = connect_to_server(_host_url);
 	std::vector<char> sock_buff(BUFF_SIZE, '\0');
 
 	for (;;) {
 		std::experimental::optional<ByteRange> task = _tasks.get();
-		if (task == std::experimental::nullopt)
+		if (task == std::experimental::nullopt || is_poison(*task))
 			break;
 
 		HttpRequest req(_host_url, _file_path);
@@ -166,11 +162,6 @@ void Client::worker_thread_run()
 
 		try_writing_to_sock(socket, req.to_string());
 
-		//@TODO: temp and buff need to be switched. Using buff and creating a unique
-		//ptr from it repeatedly, will just be changing the same buffer that all the
-		//pointers are pointing at. buff will be the one receiving the socket info,
-		//and temp will be the one getting made_unique. But in that case,
-		//need to give 'temp' a better more descriptive name.
 		// zero out main buffer
 		for (auto& b : sock_buff)
 			b = '\0';
@@ -178,30 +169,24 @@ void Client::worker_thread_run()
 		size_t len = socket.read_some(boost::asio::buffer(sock_buff), ec);
 		auto crlf_pos = find_crlfsuffix_in(sock_buff); // 'CRLFCRLF'
 
-
 		// get total size in bytes of header
 		int header_len = 0;
 		for (auto it = sock_buff.begin(); it != crlf_pos && it != sock_buff.end(); ++it)
 			header_len++;
 		header_len += 4; // 4 bytes for CRLFCRLF
 
-		std::vector<char> file_buff(BUFF_SIZE, '\0');
+		// @TODO: handle header and stuff. Check if more data needs to be read.
+		// before transfering, apply integrity check to chunk.
+		// Also check if http req needs to be resent.
+
+		std::vector<char> file_buff(BUFF_SIZE, '\0'); // @TODO: consider changing to CHUNK_SIZE
 		len -= header_len;
 		auto fb_it = file_buff.begin();
 		auto sb_it = crlf_pos + 4;
 		for (size_t i = 0; i < len; i++)
 			*fb_it++ = *sb_it++;
 
-		//@TODO: handle http response here, check if message needs to be
-		//resent, or anything else.
-		//throw it all in a function, and a while loop.
-		//
-		//
-		//@TODO: now having issues, how does the buffer survive past the end
-		//of this for loop? Add it to some random list? or store it somewhere?
-		//at some point, if it's not deleted, there will be a resource leak.
-
-		BufferPtr buffptr = std::make_unique<std::vector<char>>(buff);
+		BufferPtr buffptr = std::make_unique<std::vector<char>>(file_buff);
 		_results.put({*task, std::move(buffptr)});
 		//@TODO: chhange to put_and_wait.
 		//inside put_and_wait, call std::move() ?
@@ -259,11 +244,6 @@ void Client::run()
 		else
 			parallel_download(outfile, buff, body_len, body_pos);
 
-		if (exit_thread) {
-			poison_tasks();
-			for (std::thread& t : _threads)
-				t.join();
-		}
 	}
 	catch (...)
 	{

@@ -10,7 +10,7 @@
 #define BUFF_SIZE 4096
 #endif
 
-#ifndef POISON_
+#ifndef POISON
 #define POISON -2
 #endif
 

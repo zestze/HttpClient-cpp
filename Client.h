@@ -51,6 +51,7 @@
 #include <algorithm>
 #include <thread>
 #include <experimental/optional>
+#include <chrono>
 
 #include "ConcQueue.h"
 #include "HttpRequest.h"
@@ -68,6 +69,14 @@
 #ifndef NUM_THREADS
 #define NUM_THREADS 4
 #endif
+
+// already defined in shared.h
+#ifndef POISON
+#define POISON -2
+#endif
+
+// for reference 'seconds' as a 's' literal
+using namespace std::chrono_literals;
 
 //using String_Deq = std::deque<std::string>;
 using boost::asio::ip::tcp;
@@ -92,6 +101,8 @@ class Client {
 
 		void write_to_file(std::ofstream& outfile,
 				const std::pair<ByteRange, BufferPtr>& pair);
+
+		bool is_poison(const ByteRange task);
 
 		void poison_tasks();
 
