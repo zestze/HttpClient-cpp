@@ -82,7 +82,7 @@ using namespace std::chrono_literals;
 using boost::asio::ip::tcp;
 
 //using BufferPtr = std::shared_ptr<std::vector<char>>;
-using BufferPtr = std::unique_ptr<std::vector<char>>;
+//using BufferPtr = std::unique_ptr<std::vector<char>>;
 //@TODO: instead of using shared_ptr, use a unique_ptr with move semantics
 
 void signal_handler(int signal);
@@ -92,15 +92,15 @@ class Client {
 		Client(std::string url, std::string file)
 			: _host_url{url}, _file_path{file} { }
 
-		void parallel_download(std::ofstream& outfile, std::vector<char>& buff,
-				size_t len, std::vector<char>::iterator it);
+		void parallel_download(std::ofstream& outfile/*, std::vector<char>& buff,
+				size_t len, std::vector<char>::iterator it*/);
 
-		void simple_download(std::ofstream& outfile, std::vector<char>& buff,
-				size_t len, std::vector<char>::iterator it);
+		void simple_download(std::ofstream& outfile/*, std::vector<char>& buff,
+				size_t len, std::vector<char>::iterator it*/);
 		void run();
 
-		void write_to_file(std::ofstream& outfile,
-				const std::pair<ByteRange, BufferPtr>& pair);
+		//void write_to_file(std::ofstream& outfile,
+				//const std::pair<ByteRange, BufferPtr>& pair);
 
 		bool is_poison(const ByteRange task);
 

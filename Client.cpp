@@ -16,31 +16,8 @@ void set_globals()
 	exit_thread = false;
 }
 
-void Client::simple_download(std::ofstream& outfile, std::vector<char>& buff,
-		size_t len, std::vector<char>::iterator buff_pos)
-{
-	tcp::socket& socket = *_sockptr;
-	size_t i = 0;
-	for (; buff_pos != buff.end() && i < len; ++buff_pos, ++i)
-		outfile << *buff_pos;
 
-	// lazy solution @TODO: grab content-length and parse that instead of
-	// reading until none left
-	//int content_length = parse_for_cont_length(header);
-	boost::system::error_code ec;
-	while (!exit_thread) {
-		for (char& c : buff)
-			c = '\0';
-		len = socket.read_some(boost::asio::buffer(buff), ec);
-		if (ec == boost::asio::error::eof)
-			break;
-		else if (ec)
-			throw boost::system::system_error(ec);
-		for (size_t i = 0; i < len; i++)
-			outfile << buff[i];
-	}
-}
-
+/*
 void Client::write_to_file(std::ofstream& outfile, const std::pair<ByteRange, BufferPtr>& pair)
 {
 	int len = pair.first.get_inclus_diff();
@@ -49,16 +26,18 @@ void Client::write_to_file(std::ofstream& outfile, const std::pair<ByteRange, Bu
 	for (int i = 0; i < len; i++)
 		outfile << buffptr->at(i);
 }
+*/
 
 // @offset: variable that simultaneously keeps track of bytes read thus far,
 // and the next byte (in array order) that the file writer is waiting on.
 //
 // @TODO: first http request asks for entire file. So socket probably gets messed up
 // with that. Instead, maybe send a HEAD request?
-void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
-		size_t body_len, std::vector<char>::iterator buff_pos)
+void Client::parallel_download(std::ofstream& outfile/*, std::vector<char>& buff,
+		size_t body_len, std::vector<char>::iterator buff_pos */)
 {
 	//@TODO: honestly, these 4 lines can be put back in the calling function
+	/*
 	_offset = body_len;
 	size_t i = 0;
 	for (; buff_pos != buff.end() && i < body_len; ++buff_pos, ++i)
@@ -128,6 +107,7 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 
 		_offset += task->get_inclus_diff();
 	}
+	*/
 
 	/*
 	int offset = body_len; // bytes read thus far
@@ -264,6 +244,40 @@ void Client::poison_tasks()
 	_tasks.poison_self(poison, num_threads);
 }
 
+void Client::simple_download(std::ofstream& outfile/*, std::vector<char>& buff,
+		size_t len, std::vector<char>::iterator buff_pos*/)
+{
+	tcp::socket socket = connect_to_server(_host_url);
+
+	HttpRequest req (_host_url, _file_path);
+	try_writing_to_sock(socket, req.to_string());
+
+	std::vector<char> buff (BUFF_SIZE, '\0');
+	boost::system::error_code ec;
+	size_t len = socket.read_some(boost::asio::buffer(buff), ec);
+	auto crlf_pos = find_crlfsuffix_in(buff);
+	if (crlf_pos == buff.end())
+		throw "no crlf suffix";
+
+	std::string header (buff.begin(), crlf_pos);
+	size_t body_len = len - header.length() - 4;
+	auto body_pos = crlf_pos + 4;
+	for (size_t i = 0; body_pos != buff.end() && i < body_len; ++body_pos, ++i)
+		outfile << *body_pos;
+
+	while (!exit_thread) {
+		//for (char& c : buff)
+			//c = '\0';
+		len = socket.read_some(boost::asio::buffer(buff), ec);
+		if (ec == boost::asio::error::eof)
+			break;
+		else if (ec)
+			throw boost::system::system_error(ec);
+		for (size_t i = 0; i < len; i++)
+			outfile << buff[i];
+	}
+}
+
 void Client::run()
 {
 	try {
@@ -274,9 +288,11 @@ void Client::run()
 		std::signal(SIGINT, signal_handler);
 
 		_sockptr = std::make_unique<tcp::socket>(connect_to_server(_host_url));
-		tcp::socket& socket = *_sockptr;
+		tcp::socket& socket = *_sockptr; //@TODO: this _sockptr is useful for the large part.
 
 		HttpRequest req (_host_url, _file_path);
+		req.set_head();
+		//req.set_keepalive();
 		try_writing_to_sock(socket, req.to_string());
 
 		// open file, read from socket and write to file
@@ -285,7 +301,7 @@ void Client::run()
 		std::string file_name = temp.back();
 		outfile.open(file_name, std::ios::out | std::ios::binary);
 
-		std::vector<char> buff(BUFF_SIZE, '\0');
+		std::vector<char> buff (BUFF_SIZE, '\0');
 		boost::system::error_code ec;
 		size_t len = socket.read_some(boost::asio::buffer(buff), ec);
 
@@ -295,16 +311,16 @@ void Client::run()
 
 		std::string header (buff.begin(), crlf_pos);
 		bool accepts_byte_ranges = check_accepts_byte_ranges(header);
-		size_t body_len = len - header.length() - 4; // 4 bc CRLFCRLF is 4 characters long
-		auto body_pos = crlf_pos + 4; // 4 bc CRLFCRLF is 4 characters long
+		//size_t body_len = len - header.length() - 4; // 4 bc CRLFCRLF is 4 characters long
+		//auto body_pos = crlf_pos + 4; // 4 bc CRLFCRLF is 4 characters long
 
 		_file_size = parse_for_cont_length(header);
 
 		accepts_byte_ranges = false;
 		if (!accepts_byte_ranges)
-			simple_download(outfile, buff, body_len, body_pos);
+			simple_download(outfile);
 		else
-			parallel_download(outfile, buff, body_len, body_pos);
+			parallel_download(outfile);
 
 	}
 	catch (...)
