@@ -85,19 +85,23 @@ void signal_handler(int signal);
 class Client {
 	public:
 		Client(std::string url, std::string file)
-			: _host_url{url}, _file_path{file} { }
+			: _host_url{url}, _file_path{file}, _offset{0} { }
 
-		void parallel_download();
+		~Client() = default;
 
-		void simple_download();
+		bool is_poison(const ByteRange task)
+		{
+			if (task.first == POISON || task.last == POISON)
+				return true;
+			return false;
+		}
 
-		void run();
-
-		bool is_poison(const ByteRange task);
-
-		void poison_tasks();
-
-		void worker_thread_run();
+		void poison_tasks()
+		{
+			size_t num_threads = _threads.size();
+			ByteRange poison (POISON, POISON);
+			_tasks.poison_self(poison, num_threads);
+		}
 
 		void write_to_file(std::vector<char>& buff, size_t len)
 		{
@@ -106,7 +110,17 @@ class Client {
 				_dest_file << buff[i];
 		}
 
+		void worker_thread_run();
+
+		void parallel_download();
+
+		void simple_download();
+
+		void run();
+
 	private:
+		boost::asio::io_service _io_service;
+
 		std::string _host_url;
 		std::string _file_path;
 		int _file_size;

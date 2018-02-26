@@ -29,7 +29,7 @@ std::string try_reading_from_sock(tcp::socket& sock);
 
 void try_writing_to_sock(tcp::socket& sock, std::string msg);
 
-tcp::socket connect_to_server(std::string url);
+tcp::socket connect_to_server(std::string url, boost::asio::io_service& io_service);
 
 // for finding "\r\n\r\n" in an array, which denotes the end of a http header.
 // Thus, everything after can be written to a file.

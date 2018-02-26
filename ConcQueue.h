@@ -40,7 +40,8 @@ class ConcQueue {
 		{
 			std::unique_lock<std::mutex> lock(_lock);
 			_queue.clear();
-			lock.unlock(); //@NOTE: bc worried destructor is getting called before leaving execcution block
+			lock.unlock(); //@NOTE: bc worried destructor is
+			// getting called before leaving execcution block
 		}
 
 		std::experimental::optional<T> get()
@@ -57,26 +58,8 @@ class ConcQueue {
 		void put(T t)
 		{
 			std::lock_guard<std::mutex> lock(_lock);
-			_queue.push_back(std::move(t));
+			_queue.push_back(t);
 			_size++;
-		}
-
-		/*
-		void put(T&& t)
-		{
-			std::lock_guard<std::mutex> lock(_lock);
-			_queue.push_back(t); //@TODO: does this need std::move() wrapped?
-			_size++;
-		} */
-
-		//@TODO: call std::move()
-		std::experimental::optional<T> get_and_notify()
-		{
-		}
-
-		//@TODO: call std::move()
-		void put_and_wait(T t)
-		{
 		}
 
 		void poison_self(T poison, size_t num_threads)

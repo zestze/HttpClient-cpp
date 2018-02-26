@@ -51,10 +51,10 @@ void try_writing_to_sock(tcp::socket& sock, std::string msg)
 		       boost::asio::transfer_all(), ec);
 }
 
-tcp::socket connect_to_server(std::string url)
+tcp::socket connect_to_server(std::string url, boost::asio::io_service& io_service)
 {
 	// establish connection to server
-	boost::asio::io_service io_service;
+	//boost::asio::io_service io_service;
 	tcp::resolver resolver(io_service);
 	tcp::resolver::query query(url, "http");
 
