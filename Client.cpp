@@ -52,9 +52,84 @@ void Client::write_to_file(std::ofstream& outfile, const std::pair<ByteRange, Bu
 
 // @offset: variable that simultaneously keeps track of bytes read thus far,
 // and the next byte (in array order) that the file writer is waiting on.
+//
+// @TODO: first http request asks for entire file. So socket probably gets messed up
+// with that. Instead, maybe send a HEAD request?
 void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 		size_t body_len, std::vector<char>::iterator buff_pos)
 {
+	//@TODO: honestly, these 4 lines can be put back in the calling function
+	_offset = body_len;
+	size_t i = 0;
+	for (; buff_pos != buff.end() && i < body_len; ++buff_pos, ++i)
+		outfile << *buff_pos;
+
+	int offset = _offset; // temporary
+	for (;;) {
+		offset += CHUNK_SIZE;
+		if (offset > _file_size) {
+			ByteRange br (offset - CHUNK_SIZE, _file_size - 1);
+			_tasks.put(br);
+			break;
+		}
+		else {
+			ByteRange br (offset - CHUNK_SIZE, offset - 1);
+			_tasks.put(br);
+		}
+	}
+
+	//for (int i = 0; i < NUM_THREADS; i++) {
+		//std::thread thr(&Client::worker_thread_run, this);
+		//_threads.push_back(std::move(thr));
+	//}
+	//
+	//
+	//now, simulate a worker thread
+	tcp::socket& socket = *_sockptr; //@TODO: replace with _connect_to_server
+	std::vector<char> sock_buff(BUFF_SIZE, '\0');
+	for (;;) {
+		std::experimental::optional<ByteRange> task = _tasks.get();
+		if (task == std::experimental::nullopt || is_poison(*task))
+			break;
+
+		if (_file_size == _offset)
+			break;
+
+		if (exit_thread)
+			break;
+
+		HttpRequest req (_host_url, _file_path);
+		req.set_keepalive();
+		req.set_range(task->first, task->last);
+
+		std::cout << "HttpRequest:\n";
+		std::cout << req.to_string() << std::endl;
+
+		try_writing_to_sock(socket, req.to_string());
+
+		// zero out main buffer
+		for (char& b : sock_buff)
+			b = '\0';
+		boost::system::error_code ec;
+		size_t len = socket.read_some(boost::asio::buffer(sock_buff), ec);
+		auto crlf_pos = find_crlfsuffix_in(sock_buff);
+
+		int header_len = 0;
+		for (auto it = sock_buff.begin(); it != crlf_pos && it != sock_buff.end(); ++it)
+			header_len++;
+		header_len += 4;
+
+		//note: don't need file buff here
+		len -= header_len;
+		auto sb_it = crlf_pos + 4;
+		std::cout << "error before writing" << std::endl;
+		for (int i = 0; i < task->get_inclus_diff(); i++)
+			outfile << *sb_it++;
+
+		_offset += task->get_inclus_diff();
+	}
+
+	/*
 	int offset = body_len; // bytes read thus far
 	size_t i = 0;
 	for (; buff_pos != buff.end() && i < body_len; ++buff_pos, ++i)
@@ -117,6 +192,7 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 		if (t.joinable())
 			t.join();
 	}
+	*/
 }
 
 bool Client::is_poison(const ByteRange task)
@@ -128,6 +204,7 @@ bool Client::is_poison(const ByteRange task)
 
 void Client::worker_thread_run()
 {
+	/*
 	tcp::socket socket = connect_to_server(_host_url);
 	std::vector<char> sock_buff(BUFF_SIZE, '\0');
 
@@ -177,6 +254,7 @@ void Client::worker_thread_run()
 	}
 
 	//@TODO: send an HTTP Request with "close" instead of "keep-alive"?
+	*/
 }
 
 void Client::poison_tasks()
@@ -222,7 +300,7 @@ void Client::run()
 
 		_file_size = parse_for_cont_length(header);
 
-		//accepts_byte_ranges = false;
+		accepts_byte_ranges = false;
 		if (!accepts_byte_ranges)
 			simple_download(outfile, buff, body_len, body_pos);
 		else

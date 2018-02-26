@@ -113,10 +113,11 @@ class Client {
 		std::string _host_url;
 		std::string _file_path;
 		int _file_size;
+		int _offset;
 
 		std::vector<std::thread> _threads;
 		ConcQueue<ByteRange> _tasks;
-		ConcQueue<std::pair<ByteRange, BufferPtr>> _results;
+		//ConcQueue<std::pair<ByteRange, BufferPtr>> _results;
 };
 
 #endif
