@@ -87,7 +87,7 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 		if (offset == _file_size)
 			break;
 
-		auto pred = [offset] (std::pair<ByteRange, BufferPtr> p)
+		auto pred = [offset] (std::pair<ByteRange, BufferPtr>& p)
 		{ return p.first.offset_matches(offset); };
 
 		auto it = std::find_if(grabbed_results.begin(),
@@ -166,9 +166,12 @@ void Client::worker_thread_run()
 		for (size_t i = 0; i < len; i++)
 			*fb_it++ = *sb_it++;
 
-		BufferPtr buffptr = std::make_unique<std::vector<char>>(file_buff);
+		BufferPtr buffptr = std::make_unique<std::vector<char>>(std::move(file_buff));
+		//BufferPtr buffptr = std::make_shared<std::vector<char>>(file_buff);
 		std::pair<ByteRange, BufferPtr> result = {*task, std::move(buffptr)};
-		_results.put(std::forward<std::pair<ByteRange, BufferPtr>>(result));
+		//_results.put(std::forward<std::pair<ByteRange, BufferPtr>>(result));
+		//_results.put(std::move(result));
+		_results.put(std::move(result));
 		//@TODO: chhange to put_and_wait.
 		//inside put_and_wait, call std::move() ?
 	}

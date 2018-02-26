@@ -67,7 +67,7 @@
 #endif
 
 #ifndef NUM_THREADS
-#define NUM_THREADS 4
+#define NUM_THREADS 1
 #endif
 
 // already defined in shared.h
@@ -112,12 +112,11 @@ class Client {
 		std::unique_ptr<tcp::socket> _sockptr;
 		std::string _host_url;
 		std::string _file_path;
-		std::deque<std::thread> _threads;
-		//ConcQueue _conc_queue;
-		// make two ConcQueue's.
+		int _file_size;
+
+		std::vector<std::thread> _threads;
 		ConcQueue<ByteRange> _tasks;
 		ConcQueue<std::pair<ByteRange, BufferPtr>> _results;
-		int _file_size;
 };
 
 #endif

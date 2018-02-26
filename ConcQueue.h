@@ -56,9 +56,17 @@ class ConcQueue {
 		void put(T t)
 		{
 			std::lock_guard<std::mutex> lock(_lock);
-			_queue.push_back(t);
+			_queue.push_back(std::move(t));
 			_size++;
 		}
+
+		/*
+		void put(T&& t)
+		{
+			std::lock_guard<std::mutex> lock(_lock);
+			_queue.push_back(t); //@TODO: does this need std::move() wrapped?
+			_size++;
+		} */
 
 		//@TODO: call std::move()
 		std::experimental::optional<T> get_and_notify()
