@@ -72,8 +72,8 @@ void Client::worker_thread_run()
 		req.set_range(task->first, task->last);
 		req.simplify_accept();
 
-		std::cout << "HttpRequest:\n";
-		std::cout << req.to_string() << std::endl;
+		//std::cout << "HttpRequest:\n";
+		//std::cout << req.to_string() << std::endl;
 
 		try_writing_to_sock(socket, req.to_string());
 
@@ -86,12 +86,12 @@ void Client::worker_thread_run()
 		auto crlf_pos = find_crlfsuffix_in(sock_buff);
 
 		int header_len = 0;
-		std::cout << "Header response:\n";
+		//std::cout << "Header response:\n";
 		for (auto it = sock_buff.begin(); it != crlf_pos && it != sock_buff.end(); ++it) {
-			std::cout << *it;
+			//std::cout << *it;
 			header_len++;
 		}
-		std::cout << std::endl;
+		//std::cout << std::endl;
 		header_len += 4;
 
 		len -= header_len;
@@ -213,7 +213,7 @@ void Client::simple_download()
 		//for (size_t i = 0; i < len; i++)
 			//outfile << buff[i];
 	}
-	std::cout << "end of simple_download" << std::endl;
+	//std::cout << "end of simple_download" << std::endl;
 }
 
 void Client::run()
@@ -255,7 +255,7 @@ void Client::run()
 		else
 			parallel_download();
 
-		std::cout << "finished reading" << std::endl;
+		//std::cout << "finished reading" << std::endl;
 		_dest_file.close();
 
 	}

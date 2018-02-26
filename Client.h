@@ -68,7 +68,7 @@
 #endif
 
 #ifndef NUM_THREADS
-#define NUM_THREADS 1
+#define NUM_THREADS 10
 #endif
 
 // already defined in shared.h
