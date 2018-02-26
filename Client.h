@@ -72,7 +72,8 @@
 //using String_Deq = std::deque<std::string>;
 using boost::asio::ip::tcp;
 
-using BufferPtr = std::shared_ptr<std::vector<char>>;
+//using BufferPtr = std::shared_ptr<std::vector<char>>;
+using BufferPtr = std::unique_ptr<std::vector<char>>;
 //@TODO: instead of using shared_ptr, use a unique_ptr with move semantics
 
 void signal_handler(int signal);
@@ -89,7 +90,8 @@ class Client {
 				size_t len, std::vector<char>::iterator it);
 		void run();
 
-		void write_to_file(std::ofstream& outfile, std::pair<ByteRange, BufferPtr> pair);
+		void write_to_file(std::ofstream& outfile,
+				const std::pair<ByteRange, BufferPtr>& pair);
 
 		void poison_tasks();
 

@@ -15,7 +15,7 @@ struct ByteRange {
 
 	~ByteRange() = default;
 
-	int get_inclus_diff() { return last - first + 1; }
+	int get_inclus_diff() const { return last - first + 1; }
 
 	bool offset_matches(int offset) { return first == offset; }
 

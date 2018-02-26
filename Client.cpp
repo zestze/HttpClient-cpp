@@ -41,21 +41,23 @@ void Client::simple_download(std::ofstream& outfile, std::vector<char>& buff,
 	}
 }
 
-void Client::write_to_file(std::ofstream& outfile, std::pair<ByteRange, BufferPtr> pair)
+void Client::write_to_file(std::ofstream& outfile, const std::pair<ByteRange, BufferPtr>& pair)
 {
 	int len = pair.first.get_inclus_diff();
-	BufferPtr& buffptr = pair.second;
+	const BufferPtr& buffptr = pair.second;
 
 	for (int i = 0; i < len; i++)
 		outfile << buffptr->at(i);
 }
 
+// @offset: variable that simultaneously keeps track of bytes read thus far,
+// and the next byte (in array order) that the file writer is waiting on.
 void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
-		size_t len, std::vector<char>::iterator buff_pos)
+		size_t body_len, std::vector<char>::iterator buff_pos)
 {
-	int offset = len; // bytes read thus far
+	int offset = body_len; // bytes read thus far
 	size_t i = 0;
-	for (; buff_pos != buff.end() && i < len; ++buff_pos, ++i)
+	for (; buff_pos != buff.end() && i < body_len; ++buff_pos, ++i)
 		outfile << *buff_pos;
 
 	// @TODO: logic needs to be verified, by hand if possible.
@@ -87,8 +89,8 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 		_threads.push_back(std::move(thr));
 	}
 
-	offset = len; //reset offset to where it was.
-	std::deque<std::pair<ByteRange, BufferPtr>> grabbed_results;
+	offset = body_len; //reset offset to where it was.
+	std::vector<std::pair<ByteRange, BufferPtr>> grabbed_results;
 
 	while (!exit_thread) {
 		// first, check if grabbed_results has an element with ByteRange.start
@@ -103,6 +105,7 @@ void Client::parallel_download(std::ofstream& outfile, std::vector<char>& buff,
 		// file. Actually, already doing this at top of loop.
 		//
 
+		//if (k
 
 		auto pred = [offset] (std::pair<ByteRange, BufferPtr> p)
 		{ return p.first.offset_matches(offset); };
@@ -150,6 +153,7 @@ void Client::worker_thread_run()
 	//
 
 	tcp::socket socket = connect_to_server(_host_url);
+	std::vector<char> sock_buff(BUFF_SIZE, '\0');
 
 	for (;;) {
 		std::experimental::optional<ByteRange> task = _tasks.get();
@@ -162,10 +166,31 @@ void Client::worker_thread_run()
 
 		try_writing_to_sock(socket, req.to_string());
 
-		std::vector<char> buff(BUFF_SIZE, '\0');
+		//@TODO: temp and buff need to be switched. Using buff and creating a unique
+		//ptr from it repeatedly, will just be changing the same buffer that all the
+		//pointers are pointing at. buff will be the one receiving the socket info,
+		//and temp will be the one getting made_unique. But in that case,
+		//need to give 'temp' a better more descriptive name.
+		// zero out main buffer
+		for (auto& b : sock_buff)
+			b = '\0';
 		boost::system::error_code ec;
-		size_t len = socket.read_some(boost::asio::buffer(buff), ec);
-		auto crlf_pos = find_crlfsuffix_in(buff); // 'CRLFCRLF'
+		size_t len = socket.read_some(boost::asio::buffer(sock_buff), ec);
+		auto crlf_pos = find_crlfsuffix_in(sock_buff); // 'CRLFCRLF'
+
+
+		// get total size in bytes of header
+		int header_len = 0;
+		for (auto it = sock_buff.begin(); it != crlf_pos && it != sock_buff.end(); ++it)
+			header_len++;
+		header_len += 4; // 4 bytes for CRLFCRLF
+
+		std::vector<char> file_buff(BUFF_SIZE, '\0');
+		len -= header_len;
+		auto fb_it = file_buff.begin();
+		auto sb_it = crlf_pos + 4;
+		for (size_t i = 0; i < len; i++)
+			*fb_it++ = *sb_it++;
 
 		//@TODO: handle http response here, check if message needs to be
 		//resent, or anything else.
@@ -175,7 +200,14 @@ void Client::worker_thread_run()
 		//@TODO: now having issues, how does the buffer survive past the end
 		//of this for loop? Add it to some random list? or store it somewhere?
 		//at some point, if it's not deleted, there will be a resource leak.
+
+		BufferPtr buffptr = std::make_unique<std::vector<char>>(buff);
+		_results.put({*task, std::move(buffptr)});
+		//@TODO: chhange to put_and_wait.
+		//inside put_and_wait, call std::move() ?
 	}
+
+	//@TODO: send an HTTP Request with "close" instead of "keep-alive"?
 }
 
 void Client::poison_tasks()
