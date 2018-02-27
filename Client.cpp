@@ -66,14 +66,12 @@ void Client::parallel_download()
 			t.join();
 	}
 
-	//@TODO: now, need to concatenate all files into one.
+	// concenate all the temp files into the destination
 	for (int i = 1; i <= _NUM_THREADS; i++) {
 		std::string file_name = "temp" + std::to_string(i);
 		std::ifstream infile;
 		infile.open(file_name, std::ios::in | std::ios::binary);
-		char c;
-		while (infile >> c)
-			_dest_file << c;
+		_dest_file << infile.rdbuf();
 		infile.close();
 		std::remove(file_name.c_str());
 	}
