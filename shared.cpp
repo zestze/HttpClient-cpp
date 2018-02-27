@@ -1,6 +1,6 @@
 #include "shared.h"
 
-std::vector<std::string> split_(std::string full_msg, std::string delim)
+std::vector<std::string> Shared::split(std::string full_msg, std::string delim)
 {
 	std::vector<std::string> msgs;
 	std::size_t offset = 0;
@@ -26,7 +26,7 @@ std::vector<std::string> split_(std::string full_msg, std::string delim)
 	return msgs;
 }
 
-std::string join_(std::vector<std::string> msgs, std::string delim)
+std::string Shared::join(std::vector<std::string> msgs, std::string delim)
 {
 	std::string full_msg;
 	for (std::string msg : msgs) {
@@ -35,7 +35,7 @@ std::string join_(std::vector<std::string> msgs, std::string delim)
 	return full_msg;
 }
 
-std::string try_reading_from_sock(tcp::socket& sock)
+std::string Shared::try_reading_msg(tcp::socket& sock)
 {
 	std::array<char, BUFF_SIZE> buff = { };
 	boost::system::error_code ec;
@@ -44,14 +44,14 @@ std::string try_reading_from_sock(tcp::socket& sock)
 	return msg;
 }
 
-void try_writing_to_sock(tcp::socket& sock, std::string msg)
+void Shared::try_writing(tcp::socket& sock, std::string msg)
 {
 	boost::system::error_code ec;
 	boost::asio::write(sock, boost::asio::buffer(msg),
 		       boost::asio::transfer_all(), ec);
 }
 
-tcp::socket connect_to_server(std::string url, boost::asio::io_service& io_service)
+tcp::socket Shared::connect_to_server(std::string url, boost::asio::io_service& io_service)
 {
 	// establish connection to server
 	//boost::asio::io_service io_service;
@@ -73,7 +73,7 @@ tcp::socket connect_to_server(std::string url, boost::asio::io_service& io_servi
 	return socket;
 }
 
-std::vector<char>::iterator find_crlfsuffix_in(std::vector<char>& buff)
+std::vector<char>::iterator Shared::find_crlfsuffix_in(std::vector<char>& buff)
 {
 	auto it = buff.begin();
 	for (; it != buff.end() - 3; ++it) {
@@ -94,7 +94,7 @@ std::vector<char>::iterator find_crlfsuffix_in(std::vector<char>& buff)
 	return it;
 }
 
-bool check_accepts_byte_ranges(std::string httpHeader)
+bool Shared::check_accepts_byte_ranges(std::string httpHeader)
 {
 	std::size_t start_pos = httpHeader.find("Accept-Ranges:");
 	if (start_pos == std::string::npos)
@@ -109,7 +109,7 @@ bool check_accepts_byte_ranges(std::string httpHeader)
 	return false;
 }
 
-int parse_for_cont_length(std::string httpHeader)
+int Shared::parse_for_cont_length(std::string httpHeader)
 {
 	std::size_t start_pos = httpHeader.find("Content-Length:");
 	if (start_pos == std::string::npos)
@@ -121,3 +121,14 @@ int parse_for_cont_length(std::string httpHeader)
 	num.erase(end_pos, num.end());
 	return std::stoi(num);
 }
+
+void Shared::write_to_file(size_t amount_to_write, std::vector<char>::iterator start_pos,
+		std::vector<char>::iterator end_pos, std::ofstream& outfile)
+{
+	for (size_t i = 0; i < amount_to_write; i++) {
+		if (start_pos == end_pos)
+			throw std::string("start_pos == end_pos");
+		outfile << *start_pos++;
+	}
+}
+
