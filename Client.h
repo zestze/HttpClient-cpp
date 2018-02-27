@@ -54,6 +54,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <limits>
+#include <cstdio>
 
 #include "ConcQueue.h"
 #include "HttpRequest.h"
@@ -126,7 +127,8 @@ class Client {
 
 		void write_to_file(size_t amount_to_write,
 				std::vector<char>::iterator start_pos,
-				std::vector<char>::iterator end_pos);
+				std::vector<char>::iterator end_pos,
+				std::ofstream& outfile);
 
 		bool sync_file_write(ByteRange task,
 				std::vector<char>::iterator start_pos,
@@ -135,7 +137,7 @@ class Client {
 		size_t try_reading(std::vector<char>& main_buff, tcp::socket& socket,
 				size_t payload_size);
 
-		void worker_thread_run();
+		void worker_thread_run(ByteRange br, int ID);
 
 		void parallel_download();
 

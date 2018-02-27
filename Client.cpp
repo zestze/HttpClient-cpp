@@ -20,23 +20,31 @@ void set_globals()
 //
 void Client::parallel_download()
 {
-	int offset = _offset; // temporary
-	for (;;) {
-		offset += _CHUNK_SIZE;
-		if (offset > _file_size) {
-			ByteRange br (offset - _CHUNK_SIZE, _file_size - 1);
-			_tasks.put(br);
-			break;
+	const int chunk = _file_size / _NUM_THREADS + 1; // round up
+	int offset = _offset;
+	for (int i = 1; i <= NUM_THREADS; i++) {
+		if (i == NUM_THREADS) {
+			ByteRange br (offset, _file_size - 1);
+			std::thread thr(&Client::worker_thread_run, this,
+					br, i);
+			// @TODO: now need to pass it args
+			//@TODO:
+			// make thread
+			// give it thread ID 1 or something
+			// pass it br() and send it to worker_thread_run()
+			_threads.push_back(std::move(thr));
 		}
 		else {
-			ByteRange br (offset - _CHUNK_SIZE, offset - 1);
-			_tasks.put(br);
+			ByteRange br (offset, offset + chunk - 1);
+			std::thread thr(&Client::worker_thread_run, this,
+					br, i);
+			//@TODO: now need to pass it args
+			//@TODO:
+			// make thread
+			// give it thread ID i or something
+			// pass it br() and send it to worker_thread_run()
+			_threads.push_back(std::move(thr));
 		}
-	}
-
-	for (int i = 0; i < _NUM_THREADS; i++) {
-		std::thread thr(&Client::worker_thread_run, this);
-		_threads.push_back(std::move(thr));
 	}
 
 	for (;;) {
@@ -45,62 +53,81 @@ void Client::parallel_download()
 		std::this_thread::sleep_for(1s);
 	}
 
-	if (exit_thread)
-		poison_tasks();
-
+	//@TODO:
+	//now that threads aren't reading from queue, need a new way to
+	//force them to quit.
+	//if (exit_thread)
+		//poison_tasks();
 	for (std::thread& t : _threads) {
 		if (t.joinable())
 			t.join();
 	}
+
+	//@TODO: now, need to concatenate all files into one.
+	for (int i = 1; i <= _NUM_THREADS; i++) {
+		std::string file_name = "temp" + std::to_string(i);
+		std::ifstream infile;
+		infile.open(file_name, std::ios::in | std::ios::binary);
+		char c;
+		while (infile >> c)
+			_dest_file << c;
+		infile.close();
+		std::remove(file_name.c_str());
+	}
 }
 
-void Client::worker_thread_run()
+void Client::worker_thread_run(ByteRange br, int ID)
 {
 	tcp::socket socket = connect_to_server(_host_url, _io_service);
 	//std::vector<char> sock_buff(BUFF_SIZE, '\0');
-	std::vector<char> sock_buff; //@TODO: change back to pre-allocate
+	//std::vector<char> sock_buff; //@TODO: change back to pre-allocate
+	std::ofstream outfile;
+	std::string file_name = "temp" + std::to_string(ID);
+	outfile.open(file_name, std::ios::out | std::ios::binary);
 
-	for (;;) {
-		if (_offset == _file_size || exit_thread)
-			break;
-		std::experimental::optional<ByteRange> task = _tasks.get();
-		if (task == std::experimental::nullopt || is_poison(*task))
-			break;
+	HttpRequest req (_host_url, _file_path);
+	req.set_keepalive();
+	req.set_range(br.first, br.last);
+	req.simplify_accept();
 
-		HttpRequest req (_host_url, _file_path);
-		req.set_keepalive();
-		req.set_range(task->first, task->last);
-		req.simplify_accept();
+	try_writing_to_sock(socket, req.to_string());
 
-		try_writing_to_sock(socket, req.to_string());
-
-		size_t len = try_reading(sock_buff, socket, task->get_inclus_diff());
-		int i = 0;
-		while (len == _SIZE_MAX) {
-			std::cerr << "Http Request #" << i++ << ":\n";
-			std::cerr << req.to_string() << std::endl;
-			socket = connect_to_server(_host_url, _io_service);
-			try_writing_to_sock(socket, req.to_string());
-			len = try_reading(sock_buff, socket, task->get_inclus_diff());
-		}
-
-		auto crlf_pos = find_crlfsuffix_in(sock_buff);
-
-		int header_len = 0;
-		for (auto it = sock_buff.begin(); it != crlf_pos && it != sock_buff.end(); ++it) {
-			header_len++;
-		}
-		header_len += 4;
-
-		len -= header_len;
-		if (static_cast<int>(len) != task->get_inclus_diff())
-			throw std::string("len != inclusive_diff()");
-
-		bool success = sync_file_write(*task, crlf_pos + 4, sock_buff.end());
-		while (!success && !exit_thread)
-			success = sync_file_write(*task, crlf_pos + 4, sock_buff.end());
-
+	std::vector<char> buff (BUFF_SIZE, '\0');
+	boost::system::error_code ec;
+	size_t len = socket.read_some(boost::asio::buffer(buff), ec);
+	if (ec == boost::asio::error::eof) {
+		auto crlf_pos = find_crlfsuffix_in(buff);
+		std::string header (buff.begin(), crlf_pos);
+		std::cerr << "Http Response:\n";
+		std::cerr << header << std::endl;
+		//@TODO: change to while loop, make a new socket,
+		//resend the HTTP Response.
+		//call read_some again
 	}
+	else if (ec)
+		throw boost::system::system_error(ec);
+
+	auto crlf_pos = find_crlfsuffix_in(buff);
+
+	std::string header (buff.begin(), crlf_pos);
+	size_t body_len = len - header.length() - 4;
+	auto body_pos = crlf_pos + 4;
+	write_to_file(body_len, body_pos, buff.end(), outfile);
+
+
+	while (!exit_thread) {
+		len = socket.read_some(boost::asio::buffer(buff), ec);
+		if (ec == boost::asio::error::eof)
+			break;
+		//@TODO: above should really delete file, resend http request, and
+		//restart processing.
+		else if (ec)
+			throw boost::system::system_error(ec);
+		//@TODO: write to file here
+		write_to_file(len, buff.begin(), buff.end(), outfile);
+	}
+
+	outfile.close(); //@NOTE: should be implicitly called through destructor
 }
 
 // @NOTE: instead, do first read outside of loop. Already know how many bytes of data
@@ -178,12 +205,12 @@ bool Client::sync_file_write(ByteRange task, std::vector<char>::iterator start_p
 }
 
 void Client::write_to_file(size_t amount_to_write, std::vector<char>::iterator start_pos,
-		std::vector<char>::iterator end_pos)
+		std::vector<char>::iterator end_pos, std::ofstream& outfile)
 {
 	for (size_t i = 0; i < amount_to_write; i++) {
 		if (start_pos == end_pos)
 			throw std::string("start_pos == end_pos");
-		_dest_file << *start_pos++;
+		outfile << *start_pos++;
 	}
 }
 
@@ -206,7 +233,7 @@ void Client::simple_download()
 	auto body_pos = crlf_pos + 4; // 4 because CRLFCRLF
 	//for (size_t i = 0; body_pos != buff.end() && i < body_len; ++body_pos, ++i)
 		//_dest_file << *body_pos;
-	write_to_file(body_len, body_pos, buff.end());
+	write_to_file(body_len, body_pos, buff.end(), _dest_file);
 
 	while (!exit_thread) {
 		len = socket.read_some(boost::asio::buffer(buff), ec);
@@ -215,7 +242,7 @@ void Client::simple_download()
 		else if (ec)
 			throw boost::system::system_error(ec);
 		//write_to_file(buff, len);
-		write_to_file(len, buff.begin(), buff.end());
+		write_to_file(len, buff.begin(), buff.end(), _dest_file);
 		//for (size_t i = 0; i < len; i++)
 			//outfile << buff[i];
 	}
