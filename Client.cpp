@@ -1,8 +1,7 @@
 #include "Client.h"
 
-// ************** GLOBALS *************
+//@NOTE: for signal handler, to let threads now they should exit
 std::atomic<bool> exit_thread;
-// ************** GLOBALS *************
 
 void signal_handler(int signal)
 {
@@ -60,6 +59,7 @@ void Client::worker_thread_run()
 	tcp::socket socket = connect_to_server(_host_url, _io_service);
 	//std::vector<char> sock_buff(BUFF_SIZE, '\0');
 	std::vector<char> sock_buff; //@TODO: change back to pre-allocate
+
 	for (;;) {
 		if (_offset == _file_size || exit_thread)
 			break;
@@ -72,45 +72,32 @@ void Client::worker_thread_run()
 		req.set_range(task->first, task->last);
 		req.simplify_accept();
 
-		//std::cout << "HttpRequest:\n";
-		//std::cout << req.to_string() << std::endl;
-
 		try_writing_to_sock(socket, req.to_string());
 
-		/*
-		boost::system::error_code ec;
-		size_t len = socket.read_some(boost::asio::buffer(sock_buff), ec);
-		*/
 		size_t len = try_reading(sock_buff, socket, task->get_inclus_diff());
+		while (len == _SIZE_MAX) {
+			std::cerr << req.to_string() << std::endl;
+			socket = connect_to_server(_host_url, _io_service);
+			try_writing_to_sock(socket, req.to_string());
+			len = try_reading(sock_buff, socket, task->get_inclus_diff());
+		}
 
 		auto crlf_pos = find_crlfsuffix_in(sock_buff);
 
 		int header_len = 0;
-		//std::cout << "Header response:\n";
 		for (auto it = sock_buff.begin(); it != crlf_pos && it != sock_buff.end(); ++it) {
-			//std::cout << *it;
 			header_len++;
 		}
-		//std::cout << std::endl;
 		header_len += 4;
 
 		len -= header_len;
 		if (static_cast<int>(len) != task->get_inclus_diff())
 			throw std::string("len != inclusive_diff()");
 
-		bool success = sync_write(*task, crlf_pos + 4, sock_buff.end());
+		bool success = sync_file_write(*task, crlf_pos + 4, sock_buff.end());
 		while (!success && !exit_thread)
-			success = sync_write(*task, crlf_pos + 4, sock_buff.end());
+			success = sync_file_write(*task, crlf_pos + 4, sock_buff.end());
 
-		/*
-		auto sb_it = crlf_pos + 4;
-		for (int i = 0; i < task->get_inclus_diff(); i++)
-			_dest_file << *sb_it++;
-
-		_offset += task->get_inclus_diff();
-		*/
-		//@TODO: doesn't synchronize access to file writer.
-		//Need to figure that out.
 	}
 }
 
@@ -123,7 +110,16 @@ size_t Client::try_reading(std::vector<char>& main_buff, tcp::socket& socket, si
 	boost::system::error_code ec;
 	//main_buff.clear(); //@TODO: get rid of this and push_back, manipulate by position instead
 
-	size_t len = socket.read_some(boost::asio::buffer(temp_buff));
+	size_t len = socket.read_some(boost::asio::buffer(temp_buff), ec);
+	if (ec == boost::asio::error::eof) {
+		auto crlf_pos = find_crlfsuffix_in(temp_buff);
+		std::string header (temp_buff.begin(), crlf_pos);
+		std::cerr << "Http Response:\n";
+		std::cerr << header << std::endl;
+		return _SIZE_MAX;
+	}
+	else if (ec)
+		throw boost::system::system_error(ec);
 
 	auto crlf_pos = find_crlfsuffix_in(temp_buff);
 
@@ -141,27 +137,23 @@ size_t Client::try_reading(std::vector<char>& main_buff, tcp::socket& socket, si
 		main_buff.push_back(temp_buff[i]);
 
 	len = boost::asio::read(socket, boost::asio::buffer(temp_buff),
-			boost::asio::transfer_exactly(amount_left_to_read));
+			boost::asio::transfer_exactly(amount_left_to_read), ec);
+	if (ec == boost::asio::error::eof) {
+		std::string header (temp_buff.begin(), crlf_pos);
+		std::cerr << "Http Response:\n";
+		std::cerr << header << std::endl;
+		return _SIZE_MAX;
+	}
+	else if (ec)
+		throw boost::system::system_error(ec);
 
 	for (size_t i = 0; i < len; i++)
 		main_buff.push_back(temp_buff[i]);
 
-	/*
-	for (;;) {
-		len = socket.read_some(boost::asio::buffer(temp_buff), ec);
-		if (ec == boost::asio::error::eof)
-			break;
-		else if (ec)
-			throw boost::system::system_error(ec);
-		for (size_t i = 0; i < len; i++)
-			main_buff.push_back(temp_buff[i]);
-	}
-	*/
-
 	return main_buff.size();
 }
 
-bool Client::sync_write(ByteRange task, std::vector<char>::iterator start_pos,
+bool Client::sync_file_write(ByteRange task, std::vector<char>::iterator start_pos,
 		std::vector<char>::iterator end_pos)
 {
 	std::unique_lock<std::mutex> lock(_file_lock);
@@ -183,6 +175,16 @@ bool Client::sync_write(ByteRange task, std::vector<char>::iterator start_pos,
 	return true;
 }
 
+void Client::write_to_file(size_t amount_to_write, std::vector<char>::iterator start_pos,
+		std::vector<char>::iterator end_pos)
+{
+	for (size_t i = 0; i < amount_to_write; i++) {
+		if (start_pos == end_pos)
+			throw std::string("start_pos == end_pos");
+		_dest_file << *start_pos++;
+	}
+}
+
 void Client::simple_download()
 {
 	tcp::socket socket = connect_to_server(_host_url, _io_service);
@@ -200,8 +202,9 @@ void Client::simple_download()
 	std::string header (buff.begin(), crlf_pos);
 	size_t body_len = len - header.length() - 4; // 4 because CRLFCRLF
 	auto body_pos = crlf_pos + 4; // 4 because CRLFCRLF
-	for (size_t i = 0; body_pos != buff.end() && i < body_len; ++body_pos, ++i)
-		_dest_file << *body_pos;
+	//for (size_t i = 0; body_pos != buff.end() && i < body_len; ++body_pos, ++i)
+		//_dest_file << *body_pos;
+	write_to_file(body_len, body_pos, buff.end());
 
 	while (!exit_thread) {
 		len = socket.read_some(boost::asio::buffer(buff), ec);
@@ -209,7 +212,8 @@ void Client::simple_download()
 			break;
 		else if (ec)
 			throw boost::system::system_error(ec);
-		write_to_file(buff, len);
+		//write_to_file(buff, len);
+		write_to_file(len, buff.begin(), buff.end());
 		//for (size_t i = 0; i < len; i++)
 			//outfile << buff[i];
 	}
@@ -222,8 +226,8 @@ void Client::run()
 		std::cout << "Starting client...\n";
 		std::cout << "Type CTRL+C to quit" << std::endl;
 
-		set_globals();
-		std::signal(SIGINT, signal_handler);
+		//set_globals();
+		//std::signal(SIGINT, signal_handler);
 
 		tcp::socket socket = connect_to_server(_host_url, _io_service);
 

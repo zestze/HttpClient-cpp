@@ -53,6 +53,7 @@
 #include <experimental/optional>
 #include <chrono>
 #include <condition_variable>
+#include <limits>
 
 #include "ConcQueue.h"
 #include "HttpRequest.h"
@@ -79,14 +80,32 @@
 // for reference 'seconds' as a 's' literal
 using namespace std::chrono_literals;
 
+// for boost asio socket functions
 using boost::asio::ip::tcp;
 
+//@NOTE: used to signify that a reread needs to occur.
+const size_t _SIZE_MAX = std::numeric_limits<size_t>::max();
+
 void signal_handler(int signal);
+void set_globals();
 
 class Client {
 	public:
 		Client(std::string url, std::string file)
-			: _host_url{url}, _file_path{file}, _offset{0} { }
+			: _host_url{url}, _file_path{file}, _offset{0}
+		{
+			set_globals(); // exit_thread = false;
+			std::signal(SIGINT, signal_handler);
+		}
+
+		// @NOTE: these are intentionally deleted, since each
+		// Client has private members without copy semantics
+		Client() = delete;
+		Client(const Client&) = delete;
+		Client(Client&&) = delete;
+		Client& operator= (Client) = delete;
+		Client& operator= (const Client&) = delete;
+		Client& operator= (Client&&) = delete;
 
 		~Client() = default;
 
@@ -104,14 +123,11 @@ class Client {
 			_tasks.poison_self(poison, num_threads);
 		}
 
-		void write_to_file(std::vector<char>& buff, size_t len)
-		{
-			std::lock_guard<std::mutex> lock(_file_lock);
-			for (size_t i = 0; i < len; i++)
-				_dest_file << buff[i];
-		}
+		void write_to_file(size_t amount_to_write,
+				std::vector<char>::iterator start_pos,
+				std::vector<char>::iterator end_pos);
 
-		bool sync_write(ByteRange task,
+		bool sync_file_write(ByteRange task,
 				std::vector<char>::iterator start_pos,
 				std::vector<char>::iterator end_pos);
 
