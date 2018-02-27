@@ -1,6 +1,12 @@
 #ifndef __BYTERANGE_H__
 #define __BYTERANGE_H__
 
+// @NOTE: point of structure is to hold an inclusive range for
+// each http Request to use.
+//
+// Thus, most methods are set to default since the structure is mostly for
+// convencience.
+//
 struct ByteRange {
 	ByteRange()
 		:first{0}, last{0} { }

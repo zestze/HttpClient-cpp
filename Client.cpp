@@ -1,6 +1,7 @@
 #include "Client.h"
 
-//@NOTE: for signal handler, to let threads now they should exit
+// @NOTE:
+// for signal handler, to let threads now they should exit
 //
 std::atomic<bool> exit_thread;
 
@@ -16,7 +17,8 @@ void set_globals()
 }
 
 
-// @NOTE: offset is a variable that simultaneously keeps track of bytes read thus far,
+// @NOTE:
+// offset is a variable that simultaneously keeps track of bytes read thus far,
 // and the next byte (in array order) that the file writer is waiting on.
 //
 void Client::parallel_download()
@@ -50,23 +52,40 @@ void Client::parallel_download()
 			t.join();
 	}
 
+	if (exit_thread) {
+		for (int i = 1; i <= _NUM_THREADS; i++) {
+			std::string file_name = "temp" + std::to_string(i);
+			std::remove(file_name.c_str());
+		}
+		return;
+	}
+
 	// concenate all the temp files into the destination
 	for (int i = 1; i <= _NUM_THREADS; i++) {
 		std::string file_name = "temp" + std::to_string(i);
-		std::ifstream infile;
-		infile.open(file_name, std::ios::in | std::ios::binary);
+		std::ifstream infile (file_name, std::ios::in | std::ios::binary);
 		_dest_file << infile.rdbuf();
 		infile.close();
 		std::remove(file_name.c_str());
 	}
 }
 
+bool Client::check_sum(std::ofstream& file, size_t file_siz)
+{
+	boost::crc_32_type checker;
+	return true;
+}
+
+// @NOTE:
+// error handling can be improved, by - when arriving on eof error -
+// checking how much has been read, and send out a modified HTTP Request
+// for remaining data to read, rather than completely restarting
+// process.
 void Client::worker_thread_run(ByteRange br, int ID)
 {
 	tcp::socket socket = Shared::connect_to_server(_host_url, _io_service);
-	std::ofstream outfile;
 	std::string file_name = "temp" + std::to_string(ID);
-	outfile.open(file_name, std::ios::out | std::ios::binary);
+	std::ofstream outfile (file_name, std::ios::out | std::ios::binary);
 
 	HttpRequest req (_host_url, _file_path);
 	req.set_keepalive();
@@ -78,14 +97,33 @@ void Client::worker_thread_run(ByteRange br, int ID)
 	std::vector<char> buff (BUFF_SIZE, '\0');
 	boost::system::error_code ec;
 	size_t len = socket.read_some(boost::asio::buffer(buff), ec);
+
+	// this is for error handling, redo the above steps until a success occurs
 	if (ec == boost::asio::error::eof) {
-		auto crlf_pos = Shared::find_crlfsuffix_in(buff);
-		std::string header (buff.begin(), crlf_pos);
-		std::cerr << "Http Response:\n";
-		std::cerr << header << std::endl;
-		//@TODO: change to while loop, make a new socket,
-		//resend the HTTP Response.
-		//call read_some again
+		//auto crlf_pos = Shared::find_crlfsuffix_in(buff);
+		//std::string header (buff.begin(), crlf_pos);
+		//std::cerr << "Http Response:\n"
+		//std::cerr << header << std::endl;
+		std::cerr << "EOF prematurely reached. Restarting worker_thread_run";
+		std::cerr << std::endl;
+
+		// @NOTE:
+		// contemplate replacing this while loop,
+		// with a recursive call to worker_thread_run() to eliminate
+		// redundant code
+		while (ec == boost::asio::error::eof) {
+			socket.close();
+			socket = Shared::connect_to_server(_host_url, _io_service);
+
+			HttpRequest req (_host_url, _file_path);
+			req.set_keepalive();
+			req.set_range(br.first, br.last);
+			req.simplify_accept();
+
+			Shared::try_writing(socket, req.to_string());
+
+			len = socket.read_some(boost::asio::buffer(buff), ec);
+		}
 	}
 	else if (ec)
 		throw boost::system::system_error(ec);
@@ -104,19 +142,23 @@ void Client::worker_thread_run(ByteRange br, int ID)
 			break;
 
 		len = socket.read_some(boost::asio::buffer(buff), ec);
-		if (ec == boost::asio::error::eof)
-			break;
-		//@TODO: above should really delete file, resend http request, and
-		//restart processing.
+
+		// this is for error handling, if socket gets prematurely closed,
+		// recursively repeat above steps
+		if (ec == boost::asio::error::eof) {
+			socket.close();
+			std::remove(file_name.c_str());
+			worker_thread_run(br, ID);
+			return;
+		}
 		else if (ec)
 			throw boost::system::system_error(ec);
 		Shared::write_to_file(len, buff.begin(), buff.end(), outfile);
 		offset += len;
 	}
 
-	outfile.close(); //@NOTE: should be implicitly called through destructor
+	outfile.close(); //should be implicitly called through destructor
 	_offset += br.get_inclus_diff();
-	std::cout << "offset: " << _offset << std::endl;
 }
 
 void Client::simple_download()
@@ -233,7 +275,7 @@ size_t Client::try_reading(std::vector<char>& main_buff, tcp::socket& socket, si
 {
 	std::vector<char> temp_buff (BUFF_SIZE, '\0');
 	boost::system::error_code ec;
-	//main_buff.clear(); //@TODO: get rid of this and push_back, manipulate by position instead
+	//main_buff.clear();
 
 	size_t len = socket.read_some(boost::asio::buffer(temp_buff), ec);
 	if (ec == boost::asio::error::eof) {

@@ -21,15 +21,11 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
-//@TODO: get rid of irrelevant headers
 #include <iostream>
 #include <istream>
 #include <ostream>
 #include <fstream>
-#include <boost/asio.hpp>
 #include <string>
-#include <deque>
-#include <array>
 #include <algorithm>
 #include <thread>
 #include <experimental/optional>
@@ -37,6 +33,8 @@
 #include <condition_variable>
 #include <limits>
 #include <cstdio>
+#include <boost/asio.hpp>
+#include <boost/crc.hpp>
 
 #include "ConcQueue.h"
 #include "HttpRequest.h"
@@ -47,7 +45,6 @@
 #define BUFF_SIZE 4096
 #endif
 
-// already defined in shared.h
 #ifndef POISON
 #define POISON -2
 #endif
@@ -58,8 +55,10 @@ using namespace std::chrono_literals;
 // for boost asio socket functions
 using boost::asio::ip::tcp;
 
-// @NOTE: not in use in this implementation
+// @NOTE:
+// not in use in this implementation
 // used to signify that a reread needs to occur.
+//
 const size_t _SIZE_MAX = std::numeric_limits<size_t>::max();
 
 void signal_handler(int signal);
@@ -71,12 +70,14 @@ class Client {
 			: _host_url{url}, _file_path{file}, _offset{0},
 			_NUM_THREADS{n}
 		{
-			set_globals(); // exit_thread = false;
+			set_globals();
 			std::signal(SIGINT, signal_handler);
 		}
 
-		// @NOTE: these are intentionally deleted, since each
+		// @NOTE:
+		// these are intentionally deleted, since each
 		// Client has private members without copy semantics
+		//
 		Client() = delete;
 		Client(const Client&) = delete;
 		Client(Client&&) = delete;
@@ -93,6 +94,8 @@ class Client {
 		void simple_download();
 
 		void run(bool force_simple);
+
+		bool check_sum(std::ofstream& file, size_t file_size);
 
 		// @NOTE: not in use in this implementation
 		bool is_poison(const ByteRange task);
@@ -116,7 +119,10 @@ class Client {
 
 		std::string _host_url;
 		std::string _file_path;
+		std::string _checksum;
+
 		int _file_size;
+
 		std::atomic<int> _offset;
 
 		const int _NUM_THREADS;
@@ -125,7 +131,9 @@ class Client {
 
 		std::vector<std::thread> _threads;
 
-		// @NOTE: members not in use for this implementation
+		// @NOTE:
+		// members not in use for this implementation
+		//
 		std::condition_variable _file_cv;
 		std::mutex    _file_lock;
 		ConcQueue<ByteRange> _tasks;

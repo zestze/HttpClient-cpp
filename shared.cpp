@@ -54,7 +54,6 @@ void Shared::try_writing(tcp::socket& sock, std::string msg)
 tcp::socket Shared::connect_to_server(std::string url, boost::asio::io_service& io_service)
 {
 	// establish connection to server
-	//boost::asio::io_service io_service;
 	tcp::resolver resolver(io_service);
 	tcp::resolver::query query(url, "http");
 

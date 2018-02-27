@@ -9,12 +9,6 @@
 //#include <optional>
 #include <experimental/optional>
 
-//@TODO: maybe build condition variable into the ConcQueue class?
-// that way, get will block until the list has something in it.
-//@TODO: can have variations on get()... with blocking_get() and timed_get()
-//
-//@TODO: put_and_wait(), get_and_notify() additional methods
-
 
 template <class T>
 class ConcQueue {
