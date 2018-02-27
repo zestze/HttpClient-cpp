@@ -91,8 +91,9 @@ void set_globals();
 
 class Client {
 	public:
-		Client(std::string url, std::string file)
-			: _host_url{url}, _file_path{file}, _offset{0}
+		Client(std::string url, std::string file, int c, int n)
+			: _host_url{url}, _file_path{file}, _offset{0},
+			_CHUNK_SIZE{c}, _NUM_THREADS{n}
 		{
 			set_globals(); // exit_thread = false;
 			std::signal(SIGINT, signal_handler);
@@ -140,7 +141,7 @@ class Client {
 
 		void simple_download();
 
-		void run();
+		void run(bool force_simple);
 
 	private:
 		boost::asio::io_service _io_service;
@@ -156,6 +157,9 @@ class Client {
 
 		std::vector<std::thread> _threads;
 		ConcQueue<ByteRange> _tasks;
+
+		const int _CHUNK_SIZE;
+		const int _NUM_THREADS;
 };
 
 #endif

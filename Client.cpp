@@ -22,19 +22,19 @@ void Client::parallel_download()
 {
 	int offset = _offset; // temporary
 	for (;;) {
-		offset += CHUNK_SIZE;
+		offset += _CHUNK_SIZE;
 		if (offset > _file_size) {
-			ByteRange br (offset - CHUNK_SIZE, _file_size - 1);
+			ByteRange br (offset - _CHUNK_SIZE, _file_size - 1);
 			_tasks.put(br);
 			break;
 		}
 		else {
-			ByteRange br (offset - CHUNK_SIZE, offset - 1);
+			ByteRange br (offset - _CHUNK_SIZE, offset - 1);
 			_tasks.put(br);
 		}
 	}
 
-	for (int i = 0; i < NUM_THREADS; i++) {
+	for (int i = 0; i < _NUM_THREADS; i++) {
 		std::thread thr(&Client::worker_thread_run, this);
 		_threads.push_back(std::move(thr));
 	}
@@ -75,7 +75,9 @@ void Client::worker_thread_run()
 		try_writing_to_sock(socket, req.to_string());
 
 		size_t len = try_reading(sock_buff, socket, task->get_inclus_diff());
+		int i = 0;
 		while (len == _SIZE_MAX) {
+			std::cerr << "Http Request #" << i++ << ":\n";
 			std::cerr << req.to_string() << std::endl;
 			socket = connect_to_server(_host_url, _io_service);
 			try_writing_to_sock(socket, req.to_string());
@@ -220,14 +222,11 @@ void Client::simple_download()
 	//std::cout << "end of simple_download" << std::endl;
 }
 
-void Client::run()
+void Client::run(bool force_simple)
 {
 	try {
 		std::cout << "Starting client...\n";
 		std::cout << "Type CTRL+C to quit" << std::endl;
-
-		//set_globals();
-		//std::signal(SIGINT, signal_handler);
 
 		tcp::socket socket = connect_to_server(_host_url, _io_service);
 
@@ -253,15 +252,12 @@ void Client::run()
 
 		_file_size = parse_for_cont_length(header);
 
-		//accepts_byte_ranges = false;
-		if (!accepts_byte_ranges)
+		if (!accepts_byte_ranges || force_simple)
 			simple_download();
 		else
 			parallel_download();
 
-		//std::cout << "finished reading" << std::endl;
 		_dest_file.close();
-
 	}
 	catch (...)
 	{
@@ -274,6 +270,5 @@ void Client::run()
 		}
 		throw;
 	}
-	// std::ofstream close on destruction because of RAII
 }
 
