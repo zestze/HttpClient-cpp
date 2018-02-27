@@ -22,8 +22,8 @@ void Client::parallel_download()
 {
 	const int chunk = _file_size / _NUM_THREADS + 1; // round up
 	int offset = _offset;
-	for (int i = 1; i <= NUM_THREADS; i++) {
-		if (i == NUM_THREADS) {
+	for (int i = 1; i <= _NUM_THREADS; i++) {
+		if (i == _NUM_THREADS) {
 			ByteRange br (offset, _file_size - 1);
 			std::thread thr(&Client::worker_thread_run, this,
 					br, i);
@@ -45,6 +45,7 @@ void Client::parallel_download()
 			// pass it br() and send it to worker_thread_run()
 			_threads.push_back(std::move(thr));
 		}
+		offset += chunk;
 	}
 
 	for (;;) {
@@ -52,12 +53,14 @@ void Client::parallel_download()
 			break;
 		std::this_thread::sleep_for(1s);
 	}
+	std::cout << "main thread finished loop" << std::endl;
 
 	//@TODO:
 	//now that threads aren't reading from queue, need a new way to
 	//force them to quit.
 	//if (exit_thread)
 		//poison_tasks();
+	std::cout << "waiting on threads to join" << std::endl;
 	for (std::thread& t : _threads) {
 		if (t.joinable())
 			t.join();
@@ -114,8 +117,12 @@ void Client::worker_thread_run(ByteRange br, int ID)
 	auto body_pos = crlf_pos + 4;
 	write_to_file(body_len, body_pos, buff.end(), outfile);
 
+	size_t offset = body_len;
 
 	while (!exit_thread) {
+		if (offset == static_cast<size_t>(br.get_inclus_diff()))
+			break;
+
 		len = socket.read_some(boost::asio::buffer(buff), ec);
 		if (ec == boost::asio::error::eof)
 			break;
@@ -125,9 +132,12 @@ void Client::worker_thread_run(ByteRange br, int ID)
 			throw boost::system::system_error(ec);
 		//@TODO: write to file here
 		write_to_file(len, buff.begin(), buff.end(), outfile);
+		offset += len;
 	}
 
 	outfile.close(); //@NOTE: should be implicitly called through destructor
+	_offset += br.get_inclus_diff();
+	std::cout << "offset: " << _offset << std::endl;
 }
 
 // @NOTE: instead, do first read outside of loop. Already know how many bytes of data

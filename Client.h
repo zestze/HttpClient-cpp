@@ -69,9 +69,9 @@
 #define CHUNK_SIZE (BUFF_SIZE / 2)
 #endif
 
-#ifndef NUM_THREADS
-#define NUM_THREADS 10
-#endif
+//#ifndef NUM_THREADS
+//#define NUM_THREADS 10
+//#endif
 
 // already defined in shared.h
 #ifndef POISON
