@@ -232,3 +232,59 @@ std::string Shared::hexVec_to_hexStr(std::vector<int> hexVec)
 
 	return hexStr;
 }
+
+std::string Shared::convert_base64_2(std::string base64_num)
+{
+	std::vector<std::uint8_t> digits_base10;
+	for (char c : base64_num) {
+		digits_base10.push_back(_BASE64_TABLE.at(c));
+	}
+
+	std::vector<int> base64_in_bin;
+	std::array<int, 6> digit_bits; // @NOTE: only 1's and 0's allowed
+	for (std::uint8_t digit : digits_base10) {
+
+		for (auto& d : digit_bits)
+			d = 0;
+
+		if (digit / 32 > 0) {
+			digit_bits[0] = 1;
+			digit %= 32;
+		}
+		if (digit / 16 > 0) {
+			digit_bits[1] = 1;
+			digit %= 16;
+		}
+		if (digit / 8 > 0) {
+			digit_bits[2] = 1;
+			digit %= 8;
+		}
+		if (digit / 4 > 0) {
+			digit_bits[3] = 1;
+			digit %= 4;
+		}
+		if (digit / 2 > 0) {
+			digit_bits[4] = 1;
+			digit %= 2;
+		}
+		if (digit / 1 > 0)
+			digit_bits[5] = 1;
+
+		for (auto d : digit_bits)
+			base64_in_bin.push_back(d);
+	}
+
+	std::array<int, 32> bits32;
+	for (int i = 0; i < 32; i++) {
+		bits32[i] = base64_in_bin[i];
+	}
+
+	std::vector<int> hex_digits;
+	const int num_bytes = bits32.size() / 8;
+	for (int i = 0; i < num_bytes; i++) {
+	}
+
+	// convert base10 digits, to binary digits
+	//
+	// convert binary digits, to hexadecimal
+}

@@ -41,6 +41,7 @@
 #include "HttpRequest.h"
 #include "shared.h"
 #include "ByteRange.h"
+#include "base64.h"
 
 #ifndef BUFF_SIZE
 #define BUFF_SIZE 4096

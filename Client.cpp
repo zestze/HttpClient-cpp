@@ -88,10 +88,36 @@ bool Client::check_sum(std::fstream& file, size_t file_siz)
 		checker.process_bytes(buffer, BUFF_SIZE);
 	} while (file);
 
-	std::cout << "_checksum in base64 = " << _checksum << "\n";
-	std::cout << "_checksum in hex = " << Shared::convert_base64_to_hex(_checksum) << "\n";
+	std::string temp = base64_decode(_checksum);
+	std::cout << "base64.h methods:\n";
+	std::cout << "base64_decode(_checksum): " << temp << "\n";
+
+	std::cout << "_checksum in base64 untouced = " << _checksum << "\n";
+	std::cout << "_checksum in hex (incorrect) = " << Shared::convert_base64_to_hex(_checksum) << "\n";
 	std::cout << "boost::crc_32_type in hex = ";
 	std::cout << std::hex << std::uppercase << checker.checksum() << std::endl;
+
+	std::cout << "base64_encode(boost::checker):\n";
+	std::stringstream ss;
+	//@TODO: should it be changed to uppercase?
+	ss << std::hex << std::uppercase << checker.checksum();
+	//std::cout << base64_encode(ss.str()) << std::endl;
+	std::string middle_rep (ss.str());
+	char const* bytes_to_encode = middle_rep.data();
+	unsigned int in_len = middle_rep.length();
+	std::string final_rep = base64_encode((unsigned char const *)bytes_to_encode, in_len);
+
+	std::cout << "with uppercase: " << final_rep << "\n";
+
+	std::stringstream sss;
+	sss << std::hex << checker.checksum();
+	middle_rep = sss.str();
+	bytes_to_encode = middle_rep.data();
+	in_len = middle_rep.length();
+	final_rep = base64_encode((unsigned char const *)bytes_to_encode, in_len);
+
+	std::cout << "without uppercase: " << final_rep << std::endl;
+
 
 	/*
 	std::stringstream checker_stream;
@@ -250,6 +276,9 @@ void Client::run(bool force_simple)
 
 		_file_size = Shared::parse_for_cont_length(header);
 		_checksum  = Shared::parse_for_cdc32(header);
+
+		std::cout << "blah: " << base64_decode(_checksum) << std::endl;
+		return;
 
 		if (!accepts_byte_ranges || force_simple)
 			simple_download();

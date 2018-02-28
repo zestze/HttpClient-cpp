@@ -19,6 +19,7 @@
 #include <map>
 #include <bitset>
 #include <iostream>
+#include <cstdint>
 
 #ifndef BUFF_SIZE
 #define BUFF_SIZE 4096
@@ -34,7 +35,8 @@ namespace Shared {
 
 	const std::string _CRC_HASH_NOT_FOUND ("_CRC_HASH_NOT_FOUND");
 
-	const std::map<char, int> _BASE64_TABLE = {
+	const std::map<char, std::uint8_t> _BASE64_TABLE = {
+		{'=', 0},
 		{'A', 0},
 		{'B', 1},
 		{'C', 2},
@@ -165,6 +167,8 @@ namespace Shared {
 	std::vector<int> binStr_to_hexVec(std::string bin_num);
 
 	std::string hexVec_to_hexStr(std::vector<int> hexVec);
+
+	std::string convert_base64_2(std::string base64_num);
 
 	const std::map<int, char> _INT_TO_CHAR {
 			{0, '0'},
