@@ -1,7 +1,8 @@
 #ifndef __SHARED_H__
 #define __SHARED_H__
 
-// @NOTE: These functions serve as a sort of library for the
+// @NOTE:
+// These functions serve as a sort of library for the
 // client. The are common functions that don't explicitly need
 // to be included in the Client source files.
 //
@@ -27,6 +28,8 @@
 using boost::asio::ip::tcp;
 
 namespace Shared {
+
+	const std::string _CRC_HASH_NOT_FOUND ("_CRC_HASH_NOT_FOUND");
 
 	// @NOTE:
 	// if str = "/abc/def/ghi"
@@ -63,6 +66,18 @@ namespace Shared {
 	bool check_accepts_byte_ranges(std::string httpHeader);
 
 	int parse_for_cont_length(std::string httpHeader);
+
+	// @NOTE:
+	// for grabbing string representation of crc32 check_sum
+	// if x-goog-hash field has value 'crc32c=asdfasdf=='
+	// then this will return 'asdfasdf=='
+	//
+	// will not work when given multiple hashes in same field.
+	// hashes must be in separate header fields.
+	//
+	// if not found, returns _CRC_HASH_NOT_FOUND
+	//
+	std::string parse_for_cdc32(std::string httpHeader);
 
 	void write_to_file(size_t amount_to_write,
 			std::vector<char>::iterator start_pos,

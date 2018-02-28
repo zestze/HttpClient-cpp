@@ -114,11 +114,43 @@ int Shared::parse_for_cont_length(std::string httpHeader)
 	if (start_pos == std::string::npos)
 		throw "no content length in httpHeader";
 	std::size_t crlf_pos = httpHeader.find("\r\n", start_pos);
-	std::string temp ("Content-Length:");
-	std::string num = httpHeader.substr(start_pos + temp.length(), crlf_pos);
+	std::string content_length ("Content-Length:");
+	std::string num = httpHeader.substr(start_pos + content_length.length(),
+			crlf_pos - start_pos - content_length.length());
 	auto end_pos = std::remove(num.begin(), num.end(), ' ');
 	num.erase(end_pos, num.end());
 	return std::stoi(num);
+}
+
+std::string Shared::parse_for_cdc32(std::string httpHeader)
+{
+	std::vector<std::size_t> sp_vec;
+	std::string x_goog_hash ("x-goog-hash:");
+	std::size_t start_pos = httpHeader.find(x_goog_hash);
+	if (start_pos == std::string::npos)
+		throw "no hash in httpHeader";
+	while (start_pos != std::string::npos) {
+		sp_vec.push_back(start_pos);
+		start_pos = httpHeader.find(x_goog_hash, start_pos + 1);
+	}
+
+	for (std::size_t start_pos : sp_vec) {
+		std::size_t crlf_pos = httpHeader.find("\r\n", start_pos);
+		std::string hash = httpHeader.substr(
+				start_pos + x_goog_hash.length(),
+				crlf_pos - start_pos - x_goog_hash.length());
+		auto new_end = std::remove(hash.begin(), hash.end(), ' ');
+		hash.erase(new_end, hash.end());
+
+		// 'crc32c=asdfasdfasdf==' is the format what we're looking for
+		std::string crc_tag ("crc32c=");
+		auto new_start = hash.find(crc_tag);
+		if (new_start == std::string::npos)
+			continue;
+		return hash.substr(new_start + crc_tag.length(),
+				hash.length() - crc_tag.length());
+	}
+	return _CRC_HASH_NOT_FOUND;
 }
 
 void Shared::write_to_file(size_t amount_to_write, std::vector<char>::iterator start_pos,

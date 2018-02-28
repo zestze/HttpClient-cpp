@@ -219,6 +219,7 @@ void Client::run(bool force_simple)
 		bool accepts_byte_ranges = Shared::check_accepts_byte_ranges(header);
 
 		_file_size = Shared::parse_for_cont_length(header);
+		_checksum  = Shared::parse_for_cdc32(header);
 
 		if (!accepts_byte_ranges || force_simple)
 			simple_download();
