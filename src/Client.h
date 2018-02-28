@@ -1,3 +1,11 @@
+// @NOTE:
+// the Client class is the meat of the
+// application. The class is grouped together
+// like such to provide ease of development.
+// The Client objects aren't meant to be passed or copied,
+// its meant to compactly and efficiently gather variables
+// and functions that are semantically grouped.
+//
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
@@ -99,7 +107,10 @@ class Client {
 		// Uses md5sum linux utility, which the program assumes is
 		// stored in /usr/bin/md5sum
 		//
-		// Returns true if equal, false otherwise
+		// The calculated md5sum is represented in little endian order.
+		//
+		// Returns true if equal, or if there is no md5hash stored,
+		// false otherwise
 		//
 		bool check_sum();
 

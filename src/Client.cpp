@@ -79,6 +79,9 @@ void Client::parallel_download()
 
 bool Client::check_sum()
 {
+	if (_checksum == Shared::_HASH_NOT_FOUND)
+		return true;
+
 	int pipe_fd[2];
 	pipe(pipe_fd);
 	pid_t pid = fork();

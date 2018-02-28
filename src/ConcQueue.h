@@ -1,3 +1,12 @@
+// @NOTE:
+// Currently this file is more or less obsolete, and not in use
+// A relic of a previous implementation that tried synchronizing
+// access to the file writer.
+//
+// @NOTE:
+// This class simulates a Queue with Concurrent access.
+//
+
 #ifndef __CONCQUEUE_H__
 #define __CONCQUEUE_H__
 
