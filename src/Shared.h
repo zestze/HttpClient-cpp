@@ -126,6 +126,8 @@ namespace Shared {
 	// @NOTE:
 	// currently only works for md5 base64 numbers.
 	//
+	// Adjusts for little endian order
+	//
 	std::string convert_base64_to_hex(std::string base64_num);
 
 	// @NOTE:

@@ -107,7 +107,8 @@ class Client {
 		// Uses md5sum linux utility, which the program assumes is
 		// stored in /usr/bin/md5sum
 		//
-		// The calculated md5sum is represented in little endian order.
+		// The calculated md5sum is adjusted according to my machine
+		// being little endian and the sent value being big endian.
 		//
 		// Returns true if equal, or if there is no md5hash stored,
 		// false otherwise
