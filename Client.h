@@ -35,6 +35,7 @@
 #include <cstdio>
 #include <boost/asio.hpp>
 #include <boost/crc.hpp>
+#include <typeinfo>
 
 #include "ConcQueue.h"
 #include "HttpRequest.h"
@@ -95,7 +96,7 @@ class Client {
 
 		void run(bool force_simple);
 
-		bool check_sum(std::ofstream& file, size_t file_size);
+		bool check_sum(std::fstream& file, size_t file_size);
 
 		// @NOTE: not in use in this implementation
 		bool is_poison(const ByteRange task);
@@ -127,7 +128,7 @@ class Client {
 
 		const int _NUM_THREADS;
 
-		std::ofstream _dest_file;
+		std::fstream _dest_file;
 
 		std::vector<std::thread> _threads;
 

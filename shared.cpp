@@ -163,3 +163,72 @@ void Shared::write_to_file(size_t amount_to_write, std::vector<char>::iterator s
 	}
 }
 
+void Shared::write_to_file(size_t amount_to_write, std::vector<char>::iterator start_pos,
+		std::vector<char>::iterator end_pos, std::fstream& outfile)
+{
+	for (size_t i = 0; i < amount_to_write; i++) {
+		if (start_pos == end_pos)
+			throw std::string("start_pos == end_pos");
+		outfile << *start_pos++;
+	}
+}
+
+std::string Shared::convert_base64_to_hex(std::string base64_num)
+{
+	std::string bin_num ("");
+	for (char c : base64_num) {
+		if (c == '=') {
+			continue;
+		}
+		else {
+			//int d = _BASE64_TABLE[c];
+			int d = _BASE64_TABLE.at(c);
+			std::string bin = std::bitset<sizeof(int)>(d).to_string();
+			bin_num += bin;
+		}
+	}
+
+	std::vector<int> hex_digits = binStr_to_hexVec(bin_num);
+	std::string hexStr = hexVec_to_hexStr(hex_digits);
+	return hexStr;
+	//return bin_num;
+	/*
+	long long ll_bin_num = stoll(bin_num, nullptr, 2);
+
+	std::stringstream ss;
+	ss << std::hex << ll_bin_num;
+	//std::cout << bin_num << "\n";
+	return ss.str();
+	*/
+}
+
+std::vector<int> Shared::binStr_to_hexVec(std::string bin_num)
+{
+	std::vector<int> hex_digits;
+	for (auto rpos = bin_num.rbegin(); rpos != bin_num.rend(); ) {
+		auto temp = rpos;
+		int hex_dig = 0;
+		for (int bits = 0; bits < 4 && rpos != bin_num.rend();
+								++bits, ++temp) {
+			int power = 1;
+			for (int i = 0; i < bits; i++)
+				power *= 2;
+			if (*temp == '1')
+				hex_dig += power;
+		}
+		hex_digits.push_back(hex_dig);
+		rpos = temp;
+	}
+	std::reverse(hex_digits.begin(), hex_digits.end());
+	return hex_digits;
+}
+
+std::string Shared::hexVec_to_hexStr(std::vector<int> hexVec)
+{
+	std::string hexStr ("");
+
+	for (int digit : hexVec)
+		hexStr += _INT_TO_CHAR.at(digit);
+
+	return hexStr;
+}

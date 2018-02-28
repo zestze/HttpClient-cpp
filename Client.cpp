@@ -68,12 +68,42 @@ void Client::parallel_download()
 		infile.close();
 		std::remove(file_name.c_str());
 	}
+
+	check_sum(_dest_file, _file_size);
 }
 
-bool Client::check_sum(std::ofstream& file, size_t file_siz)
+// @NOTE:
+// adapted from boost docs for crc_example.cpp
+bool Client::check_sum(std::fstream& file, size_t file_siz)
 {
+	if (_checksum == Shared::_CRC_HASH_NOT_FOUND)
+		return true;
+
 	boost::crc_32_type checker;
-	return true;
+
+	do
+	{
+		char buffer[ BUFF_SIZE ];
+		file.read(buffer, BUFF_SIZE);
+		checker.process_bytes(buffer, BUFF_SIZE);
+	} while (file);
+
+	std::cout << "_checksum in base64 = " << _checksum << "\n";
+	std::cout << "_checksum in hex = " << Shared::convert_base64_to_hex(_checksum) << "\n";
+	std::cout << "boost::crc_32_type in hex = ";
+	std::cout << std::hex << std::uppercase << checker.checksum() << std::endl;
+
+	/*
+	std::stringstream checker_stream;
+	checker_stream << std::hex << std::uppercase << checker.checksum();
+	std::string checker_hex_str;
+	checker_hex_str = checker_stream.str();
+	*/
+
+	// @TODO: need to convert base64 to base16.
+	// this will need a function since it involves padding, and conversions
+
+	return true; //@TODO: replace with an actual logic check of equivalence
 }
 
 // @NOTE:
