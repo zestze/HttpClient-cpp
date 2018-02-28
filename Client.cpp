@@ -69,66 +69,33 @@ void Client::parallel_download()
 		std::remove(file_name.c_str());
 	}
 
-	check_sum(_dest_file, _file_size);
+	check_sum();
 }
 
 // @NOTE:
-// adapted from boost docs for crc_example.cpp
-bool Client::check_sum(std::fstream& file, size_t file_siz)
+bool Client::check_sum()
 {
-	if (_checksum == Shared::_CRC_HASH_NOT_FOUND)
-		return true;
+	int pipe_fd[2];
+	pipe(pipe_fd);
+	pid_t pid = fork();
 
-	boost::crc_32_type checker;
-	boost::crc_optimal<32, 0x1EDC6F41, 0xFFFFFFFF, 0xFFFFFFFF, true, true> crc32c_checker;
+	std::string md5sum_result;
 
-	do
-	{
-		char buffer[ BUFF_SIZE ];
-		file.read(buffer, BUFF_SIZE);
-		crc32c_checker.process_bytes(buffer, BUFF_SIZE);
-	} while (file);
+	if (pid == 0) {
+		close(pipe_fd[0]);
+		dup2(pipe_fd[1], 1);
+		close(pipe_fd[1]);
 
-	std::string temp = base64_decode(_checksum);
-	std::cout << "base64.h methods:\n";
-	std::cout << "base64_decode(_checksum): " << temp << "\n";
-
-	std::cout << "_checksum in base64 untouced = " << _checksum << "\n";
-	std::cout << "_checksum in hex (incorrect) = " << Shared::convert_base64_to_hex(_checksum) << "\n";
-	std::cout << "boost::crc_32_type in hex = ";
-	std::cout << std::hex << std::uppercase << crc32c_checker.checksum() << std::endl;
-
-	std::cout << "base64_encode(boost::crc32c_checker):\n";
-	std::stringstream ss;
-	//@TODO: should it be changed to uppercase?
-	ss << std::hex << std::uppercase << crc32c_checker.checksum();
-	//std::cout << base64_encode(ss.str()) << std::endl;
-	std::string middle_rep (ss.str());
-	char const* bytes_to_encode = middle_rep.data();
-	unsigned int in_len = middle_rep.length();
-	std::string final_rep = base64_encode((unsigned char const *)bytes_to_encode, in_len);
-
-	std::cout << "with uppercase: " << final_rep << "\n";
-
-	std::stringstream sss;
-	sss << std::hex << crc32c_checker.checksum();
-	middle_rep = sss.str();
-	bytes_to_encode = middle_rep.data();
-	in_len = middle_rep.length();
-	final_rep = base64_encode((unsigned char const *)bytes_to_encode, in_len);
-
-	std::cout << "without uppercase: " << final_rep << std::endl;
-
-
-	/*
-	std::stringstream crc32c_checker_stream;
-	crc32c_checker_stream << std::hex << std::uppercase << crc32c_checker.checksum();
-	std::string crc32c_checker_hex_str;
-	crc32c_checker_hex_str = crc32c_checker_stream.str();
-	*/
-
-	// @TODO: need to convert base64 to base16.
-	// this will need a function since it involves padding, and conversions
+		auto temp = Shared::split(_file_path, "/");
+		std::string file_name = temp.back();
+		execl("/usr/bin/md5sum", "md5sum", file_name.c_str(), (char *)0);
+	}
+	else {
+		char buffer [BUFF_SIZE] = {'\0'};
+		close(pipe_fd[1]);
+		read(pipe_fd[0], buffer, BUFF_SIZE);
+		md5sum_result = buffer;
+	}
 
 	return true; //@TODO: replace with an actual logic check of equivalence
 }
@@ -276,14 +243,8 @@ void Client::run(bool force_simple)
 		bool accepts_byte_ranges = Shared::check_accepts_byte_ranges(header);
 
 		_file_size = Shared::parse_for_cont_length(header);
-		_checksum  = Shared::parse_for_cdc32(header);
-
-		std::cout << "convert_base64_2: ";
-		std::cout << _checksum << std::endl;
-		std::cout << Shared::convert_base64_2(_checksum) << std::endl;
-		return;
-		//check_sum(_dest_file, _file_size);// @TODO: get rid of
-		//return;
+		//_checksum  = Shared::parse_for_cdc32(header);
+		_checksum = Shared::parse_for_md5(header);
 
 		if (!accepts_byte_ranges || force_simple)
 			simple_download();

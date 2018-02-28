@@ -35,13 +35,14 @@
 #include <cstdio>
 #include <boost/asio.hpp>
 #include <boost/crc.hpp>
-#include <typeinfo>
+#include <openssl/md5.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #include "ConcQueue.h"
 #include "HttpRequest.h"
 #include "shared.h"
 #include "ByteRange.h"
-#include "base64.h"
 
 #ifndef BUFF_SIZE
 #define BUFF_SIZE 4096
@@ -97,7 +98,7 @@ class Client {
 
 		void run(bool force_simple);
 
-		bool check_sum(std::fstream& file, size_t file_size);
+		bool check_sum();
 
 		// @NOTE: not in use in this implementation
 		bool is_poison(const ByteRange task);

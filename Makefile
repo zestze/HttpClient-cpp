@@ -8,15 +8,13 @@ CXXFLAGS 	= -g -Wall $(INCLUDES) -std=c++17 -pthread
 LDFLAGS 	= -g -pthread
 LDLIBS 		= -lboost_system
 
-$(TARGET): Client.o shared.o base64.o
+$(TARGET): Client.o shared.o
 
 $(TARGET).o: Client.h shared.h
 
-Client.o: HttpRequest.h shared.h ConcQueue.h ByteRange.h base64.h
+Client.o: HttpRequest.h shared.h ConcQueue.h ByteRange.h
 
 shared.o: 
-
-base64.0:
 
 .PHONY: clean
 clean:

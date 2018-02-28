@@ -33,76 +33,6 @@ using boost::asio::ip::tcp;
 
 namespace Shared {
 
-	const std::string _CRC_HASH_NOT_FOUND ("_CRC_HASH_NOT_FOUND");
-
-	const std::map<char, std::uint8_t> _BASE64_TABLE = {
-		{'=', 0},
-		{'A', 0},
-		{'B', 1},
-		{'C', 2},
-		{'D', 3},
-		{'E', 4},
-		{'F', 5},
-		{'G', 6},
-		{'H', 7},
-		{'I', 8},
-		{'J', 9},
-		{'K', 10},
-		{'L', 11},
-		{'M', 12},
-		{'N', 13},
-		{'O', 14},
-		{'P', 15},
-		{'Q', 16},
-		{'R', 17},
-		{'S', 18},
-		{'T', 19},
-		{'U', 20},
-		{'V', 21},
-		{'W', 22},
-		{'X', 23},
-		{'Y', 24},
-		{'Z', 25},
-		{'a', 26},
-		{'b', 27},
-		{'c', 28},
-		{'d', 29},
-		{'e', 30},
-		{'f', 31},
-		{'g', 32},
-		{'h', 33},
-		{'i', 34},
-		{'j', 35},
-		{'k', 36},
-		{'l', 37},
-		{'m', 38},
-		{'n', 39},
-		{'o', 40},
-		{'p', 41},
-		{'q', 42},
-		{'r', 43},
-		{'s', 44},
-		{'t', 45},
-		{'u', 46},
-		{'v', 47},
-		{'w', 48},
-		{'x', 49},
-		{'y', 50},
-		{'z', 51},
-		{'0', 52},
-		{'1', 53},
-		{'2', 54},
-		{'3', 55},
-		{'4', 56},
-		{'5', 57},
-		{'6', 58},
-		{'7', 59},
-		{'8', 60},
-		{'9', 61},
-		{'+', 62},
-		{'/', 63}
-	};
-
 	// @NOTE:
 	// if str = "/abc/def/ghi"
 	// then a call with delim = "/" will result in:
@@ -139,6 +69,7 @@ namespace Shared {
 
 	int parse_for_cont_length(std::string httpHeader);
 
+
 	// @NOTE:
 	// for grabbing string representation of crc32 check_sum
 	// if x-goog-hash field has value 'crc32c=asdfasdf=='
@@ -147,11 +78,29 @@ namespace Shared {
 	// will not work when given multiple hashes in same field.
 	// hashes must be in separate header fields.
 	//
-	// if not found, returns _CRC_HASH_NOT_FOUND
+	// if not found, returns _HASH_NOT_FOUND
 	//
-	std::string parse_for_cdc32(std::string httpHeader);
+	std::string parse_for_crc32(std::string httpHeader);
 
-	//@TODO: replace with template
+	// @NOTE:
+	// similar to cdc32, but for md5
+	//
+	std::string parse_for_md5(std::string httpHeader);
+
+	// @NOTE:
+	// underlying implementation for
+	// parse_for_crc32
+	// and
+	// parse_for_md5
+	//
+	std::string parse_for_hash(std::string httpHeader, std::string hash_tag);
+
+	// @NOTE:
+	// return value of the parse family functions when hash is not found
+	//
+	const std::string _HASH_NOT_FOUND ("_HASH_NOT_FOUND");
+
+	// @TODO: replace with template
 	void write_to_file(size_t amount_to_write,
 			std::vector<char>::iterator start_pos,
 			std::vector<char>::iterator end_pos,
@@ -164,30 +113,29 @@ namespace Shared {
 
 	std::string convert_base64_to_hex(std::string base64_num);
 
-	std::vector<int> binStr_to_hexVec(std::string bin_num);
-
-	std::string hexVec_to_hexStr(std::vector<int> hexVec);
-
-	std::string convert_base64_2(std::string base64_num);
-
 	const std::map<int, char> _INT_TO_CHAR {
-			{0, '0'},
-			{1, '1'},
-			{2, '2'},
-			{3, '3'},
-			{4, '4'},
-			{5, '5'},
-			{6, '6'},
-			{7, '7'},
-			{8, '8'},
-			{9, '9'},
-			{10, 'A'},
-			{11, 'B'},
-			{12, 'C'},
-			{13, 'D'},
-			{14, 'E'},
-			{15, 'F'}
+			{0, '0'}, {1, '1'}, {2, '2'}, {3, '3'},
+			{4, '4'}, {5, '5'}, {6, '6'}, {7, '7'},
+			{8, '8'}, {9, '9'}, {10, 'A'}, {11, 'B'},
+			{12, 'C'}, {13, 'D'}, {14, 'E'}, {15, 'F'}
 	};
+
+	const std::map<char, std::uint8_t> _BASE64_TABLE = {
+		{'=', 0}, {'A', 0}, {'B', 1}, {'C', 2}, {'D', 3}, {'E', 4},
+		{'F', 5}, {'G', 6}, {'H', 7}, {'I', 8}, {'J', 9}, {'K', 10},
+		{'L', 11}, {'M', 12}, {'N', 13}, {'O', 14}, {'P', 15},
+		{'Q', 16}, {'R', 17}, {'S', 18}, {'T', 19}, {'U', 20},
+		{'V', 21}, {'W', 22}, {'X', 23}, {'Y', 24}, {'Z', 25},
+		{'a', 26}, {'b', 27}, {'c', 28}, {'d', 29}, {'e', 30}, {'f', 31},
+		{'g', 32}, {'h', 33}, {'i', 34}, {'j', 35}, {'k', 36}, {'l', 37},
+		{'m', 38}, {'n', 39}, {'o', 40}, {'p', 41}, {'q', 42}, {'r', 43},
+		{'s', 44}, {'t', 45}, {'u', 46}, {'v', 47}, {'w', 48}, {'x', 49},
+		{'y', 50}, {'z', 51}, {'0', 52}, {'1', 53}, {'2', 54}, {'3', 55},
+		{'4', 56}, {'5', 57}, {'6', 58}, {'7', 59}, {'8', 60}, {'9', 61},
+		{'+', 62}, {'/', 63}
+	};
+
+
 }
 
 #endif

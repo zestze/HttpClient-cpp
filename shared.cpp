@@ -122,7 +122,7 @@ int Shared::parse_for_cont_length(std::string httpHeader)
 	return std::stoi(num);
 }
 
-std::string Shared::parse_for_cdc32(std::string httpHeader)
+std::string Shared::parse_for_hash(std::string httpHeader, std::string hash_tag)
 {
 	std::vector<std::size_t> sp_vec;
 	std::string x_goog_hash ("x-goog-hash:");
@@ -143,14 +143,26 @@ std::string Shared::parse_for_cdc32(std::string httpHeader)
 		hash.erase(new_end, hash.end());
 
 		// 'crc32c=asdfasdfasdf==' is the format what we're looking for
-		std::string crc_tag ("crc32c=");
-		auto new_start = hash.find(crc_tag);
+		// or
+		// 'md5=asdfasdfasdf==' is the format we're looking for
+		auto new_start = hash.find(hash_tag);
 		if (new_start == std::string::npos)
 			continue;
-		return hash.substr(new_start + crc_tag.length(),
-				hash.length() - crc_tag.length());
+		return hash.substr(new_start + hash_tag.length(),
+				hash.length() - hash_tag.length());
 	}
-	return _CRC_HASH_NOT_FOUND;
+	return _HASH_NOT_FOUND;
+
+}
+
+std::string Shared::parse_for_crc32(std::string httpHeader)
+{
+	return parse_for_hash(httpHeader, "crc32=");
+}
+
+std::string Shared::parse_for_md5(std::string httpHeader)
+{
+	return parse_for_hash(httpHeader, "md5=");
 }
 
 void Shared::write_to_file(size_t amount_to_write, std::vector<char>::iterator start_pos,
@@ -174,66 +186,6 @@ void Shared::write_to_file(size_t amount_to_write, std::vector<char>::iterator s
 }
 
 std::string Shared::convert_base64_to_hex(std::string base64_num)
-{
-	std::string bin_num ("");
-	for (char c : base64_num) {
-		if (c == '=') {
-			continue;
-		}
-		else {
-			//int d = _BASE64_TABLE[c];
-			int d = _BASE64_TABLE.at(c);
-			std::string bin = std::bitset<sizeof(int)>(d).to_string();
-			bin_num += bin;
-		}
-	}
-
-	std::vector<int> hex_digits = binStr_to_hexVec(bin_num);
-	std::string hexStr = hexVec_to_hexStr(hex_digits);
-	return hexStr;
-	//return bin_num;
-	/*
-	long long ll_bin_num = stoll(bin_num, nullptr, 2);
-
-	std::stringstream ss;
-	ss << std::hex << ll_bin_num;
-	//std::cout << bin_num << "\n";
-	return ss.str();
-	*/
-}
-
-std::vector<int> Shared::binStr_to_hexVec(std::string bin_num)
-{
-	std::vector<int> hex_digits;
-	for (auto rpos = bin_num.rbegin(); rpos != bin_num.rend(); ) {
-		auto temp = rpos;
-		int hex_dig = 0;
-		for (int bits = 0; bits < 4 && rpos != bin_num.rend();
-								++bits, ++temp) {
-			int power = 1;
-			for (int i = 0; i < bits; i++)
-				power *= 2;
-			if (*temp == '1')
-				hex_dig += power;
-		}
-		hex_digits.push_back(hex_dig);
-		rpos = temp;
-	}
-	std::reverse(hex_digits.begin(), hex_digits.end());
-	return hex_digits;
-}
-
-std::string Shared::hexVec_to_hexStr(std::vector<int> hexVec)
-{
-	std::string hexStr ("");
-
-	for (int digit : hexVec)
-		hexStr += _INT_TO_CHAR.at(digit);
-
-	return hexStr;
-}
-
-std::string Shared::convert_base64_2(std::string base64_num)
 {
 	std::vector<std::uint8_t> digits_base10;
 	for (char c : base64_num) {
