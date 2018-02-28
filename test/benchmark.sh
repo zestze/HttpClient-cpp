@@ -6,9 +6,7 @@ file="../log.txt"
 [ -e $file ] && rm $file
 
 cd ../src
-
 make
-
 cd ../test
 
 printf "wget time: " >> $file
@@ -24,5 +22,4 @@ do
 done
 
 cd ../src
-
 make clean

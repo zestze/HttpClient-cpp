@@ -68,9 +68,9 @@ real	1m34.641s
 user	2m0.557s
 sys	0m26.517s
 
-14 threads download time: WARNING: generated md5hash did not match md5hash value passed in http Header
+14 threads download time:
+WARNING: generated md5hash did not match md5hash value passed in http Header.
 Please try again.
-
 real	1m35.642s
 user	2m1.032s
 sys	0m27.339s

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # similar to run*.sh but without building, to better measure execution time
+# forces simple download
 
 file_path=storage.googleapis.com/vimeo-test/work-at-vimeo-2.mp4
 
