@@ -19,7 +19,7 @@
 
 #include "ConcQueue.h"
 #include "HttpRequest.h"
-#include "shared.h"
+#include "Shared.h"
 #include "ByteRange.h"
 
 #ifndef BUFF_SIZE
@@ -30,6 +30,7 @@
 // not in use, was for previous implementation as means
 // to poison a task_queue and have worker_threads exit
 // when an exception was thrown.
+//
 #ifndef POISON
 #define POISON -2
 #endif

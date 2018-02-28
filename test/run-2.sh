@@ -1,9 +1,11 @@
 #!/bin/bash
 
+cd ../src
+
 make
 
 rm work-at-vimeo-2.mp4
 
-./Main storage.googleapis.com/vimeo-test/work-at-vimeo-2.mp4 1024 4 0
+./Main storage.googleapis.com/vimeo-test/work-at-vimeo-2.mp4 4 0
 
 make clean

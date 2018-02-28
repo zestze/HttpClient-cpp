@@ -7,6 +7,7 @@
 // Thus, most methods are set to default since the structure is mostly for
 // convencience.
 //
+
 struct ByteRange {
 	ByteRange()
 		:first{0}, last{0} { }

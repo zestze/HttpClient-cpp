@@ -1,4 +1,4 @@
-#include "shared.h"
+#include "Shared.h"
 
 std::vector<std::string> Shared::split(std::string full_msg, std::string delim)
 {

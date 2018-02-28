@@ -1,5 +1,5 @@
 #include "Client.h"
-#include "shared.h"
+#include "Shared.h"
 
 int main(int argc, char **argv)
 {

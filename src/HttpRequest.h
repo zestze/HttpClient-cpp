@@ -3,7 +3,9 @@
 
 #include <string>
 
-// @TODO: make GET optional so that HEAD can be used
+// @NOTE:
+// simple class for creating httpRequests quickly and easily
+//
 class HttpRequest {
 	public:
 		HttpRequest(std::string host, std::string file_path)
