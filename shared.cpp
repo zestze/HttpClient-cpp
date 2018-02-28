@@ -279,12 +279,48 @@ std::string Shared::convert_base64_2(std::string base64_num)
 		bits32[i] = base64_in_bin[i];
 	}
 
-	std::vector<int> hex_digits;
-	const int num_bytes = bits32.size() / 8;
-	for (int i = 0; i < num_bytes; i++) {
+	std::vector<int> octet_digits_base10;
+	const int num_octets = bits32.size() / 8;
+	for (int i = 0; i < num_octets; i++) {
+		int octet_digit = 0;
+		if (bits32[i * 8 + 0] == 1)
+			octet_digit += 128;
+		if (bits32[i * 8 + 1] == 1)
+			octet_digit += 64;
+		if (bits32[i * 8 + 2] == 1)
+			octet_digit += 32;
+		if (bits32[i * 8 + 3] == 1)
+			octet_digit += 16;
+		if (bits32[i * 8 + 4] == 1)
+			octet_digit += 8;
+		if (bits32[i * 8 + 5] == 1)
+			octet_digit += 4;
+		if (bits32[i * 8 + 6] == 1)
+			octet_digit += 2;
+		if (bits32[i * 8 + 7] == 1)
+			octet_digit += 1;
+
+		octet_digits_base10.push_back(octet_digit);
 	}
 
-	// convert base10 digits, to binary digits
-	//
-	// convert binary digits, to hexadecimal
+	std::vector<std::string> octet_digits_hex;
+	for (int octet_digit_base10 : octet_digits_base10) {
+		int lsd = octet_digit_base10 / 16;
+		int msd = octet_digit_base10 % 16;
+
+		std::string lsd_str (1, _INT_TO_CHAR.at(lsd));
+		std::string msd_str (1, _INT_TO_CHAR.at(msd));
+
+		std::string hex_digit = msd_str + lsd_str;
+		octet_digits_hex.push_back(hex_digit);
+
+		std::cout << "msd,lsd: " << msd << "," << lsd << std::endl;
+		std::cout << "hex_digit: " << hex_digit << std::endl;
+	}
+
+	std::string retval ("");
+	for (std::string s : octet_digits_hex)
+		retval += s;
+
+	return retval;
 }
