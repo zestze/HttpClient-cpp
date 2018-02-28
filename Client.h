@@ -1,23 +1,3 @@
-/*
- * @TODO: integrity checksum
- * x-goog-hash, md5 and crc32c
- *
- * @TODO: Handle errors and retries
- *
- * @TODO: Benchmarks for various chunk size for parallel downloads
- *
- * @TODO: Limiting the number of concurrent chunks being downloaded to some max value
- *
- * @TODO: Resuming partially downloaded chunks on error
- *
- * @TODO: Calculating checksum for integrity check during download rather than at end
- *
- * @TODO: determine best buffer size?
- *
- * @TODO: implement a DASH?
- *
- */
-
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
@@ -34,8 +14,6 @@
 #include <limits>
 #include <cstdio>
 #include <boost/asio.hpp>
-#include <boost/crc.hpp>
-#include <openssl/md5.h>
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -48,14 +26,20 @@
 #define BUFF_SIZE 4096
 #endif
 
+// @NOTE:
+// not in use, was for previous implementation as means
+// to poison a task_queue and have worker_threads exit
+// when an exception was thrown.
 #ifndef POISON
 #define POISON -2
 #endif
 
 // for referencing 'seconds' as a 's' literal
+//
 using namespace std::chrono_literals;
 
 // for boost asio socket functions
+//
 using boost::asio::ip::tcp;
 
 // @NOTE:
@@ -90,14 +74,32 @@ class Client {
 
 		~Client() = default;
 
-		void worker_thread_run(ByteRange br, int ID);
-
-		void parallel_download();
+		// @NOTE:
+		// 'Entry' point for the Client class. Here the initial httpRequest
+		// is sent, and it is decided to perform the simple download
+		// or the concurrent download
+		//
+		// force_simple is an argument that can be passed, and as the
+		// name suggests, will force the program to use the simple
+		// download regardless if the server supports ByteRange
+		//
+		void run(bool force_simple = false);
 
 		void simple_download();
 
-		void run(bool force_simple);
+		void parallel_download();
 
+		void worker_thread_run(ByteRange br, int ID);
+
+		// @NOTE:
+		// Calculates md5sum hash and compares it to md5hash from
+		// http header.
+		//
+		// Uses md5sum linux utility, which the program assumes is
+		// stored in /usr/bin/md5sum
+		//
+		// Returns true if equal, false otherwise
+		//
 		bool check_sum();
 
 		// @NOTE: not in use in this implementation

@@ -17,7 +17,6 @@
 #include <ostream>
 #include <fstream>
 #include <map>
-#include <bitset>
 #include <iostream>
 #include <cstdint>
 
@@ -53,8 +52,15 @@ namespace Shared {
 	//
 	std::string try_reading_msg(tcp::socket& sock);
 
+	// @NOTE:
+	// simply takes a msg and writes it to a socket
+	//
 	void try_writing(tcp::socket& sock, std::string msg);
 
+	// @NOTE:
+	// connects to a server, performs dns resolution, and tests for
+	// ipv4 and ipv6 connections.
+	//
 	tcp::socket connect_to_server(std::string url, boost::asio::io_service& io_service);
 
 	// @NOTE:
@@ -65,8 +71,14 @@ namespace Shared {
 	//
 	std::vector<char>::iterator find_crlfsuffix_in(std::vector<char>& buff);
 
+	// @NOTE:
+	// function name is descriptive
+	//
 	bool check_accepts_byte_ranges(std::string httpHeader);
 
+	// @NOTE:
+	// function name is descriptive
+	//
 	int parse_for_cont_length(std::string httpHeader);
 
 
@@ -111,8 +123,14 @@ namespace Shared {
 			std::vector<char>::iterator end_pos,
 			std::fstream& outfile);
 
+	// @NOTE:
+	// currently only works for md5 base64 numbers.
+	//
 	std::string convert_base64_to_hex(std::string base64_num);
 
+	// @NOTE:
+	// used by above function to perform conversion
+	//
 	const std::map<int, char> _INT_TO_CHAR {
 			{0, '0'}, {1, '1'}, {2, '2'}, {3, '3'},
 			{4, '4'}, {5, '5'}, {6, '6'}, {7, '7'},
@@ -120,6 +138,9 @@ namespace Shared {
 			{12, 'C'}, {13, 'D'}, {14, 'E'}, {15, 'F'}
 	};
 
+	// @NOTE:
+	// used by above function to perform conversion
+	//
 	const std::map<char, std::uint8_t> _BASE64_TABLE = {
 		{'=', 0}, {'A', 0}, {'B', 1}, {'C', 2}, {'D', 3}, {'E', 4},
 		{'F', 5}, {'G', 6}, {'H', 7}, {'I', 8}, {'J', 9}, {'K', 10},

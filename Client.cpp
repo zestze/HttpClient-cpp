@@ -69,10 +69,14 @@ void Client::parallel_download()
 		std::remove(file_name.c_str());
 	}
 
-	check_sum();
+	bool has_integrity = check_sum();
+	if (!has_integrity) {
+		std::cerr << "WARNING: generated md5hash did not match";
+		std::cerr << " md5hash value passed in http Header\n";
+		std::cerr << "Please try again.\n";
+	}
 }
 
-// @NOTE:
 bool Client::check_sum()
 {
 	int pipe_fd[2];
@@ -91,13 +95,22 @@ bool Client::check_sum()
 		execl("/usr/bin/md5sum", "md5sum", file_name.c_str(), (char *)0);
 	}
 	else {
+		wait(nullptr);
 		char buffer [BUFF_SIZE] = {'\0'};
 		close(pipe_fd[1]);
 		read(pipe_fd[0], buffer, BUFF_SIZE);
 		md5sum_result = buffer;
 	}
 
-	return true; //@TODO: replace with an actual logic check of equivalence
+	std::vector<std::string> temp = Shared::split(md5sum_result, " ");
+	std::string md5hash = temp.front();
+	std::transform(md5hash.begin(), md5hash.end(), md5hash.begin(), ::toupper);
+	//std::cout << "md5sum calculated hash: " << md5hash << std::endl;
+
+	std::string grabbed_hash = Shared::convert_base64_to_hex(_checksum);
+	//std::cout << "hash grabbed from http: " << grabbed_hash << std::endl;
+
+	return md5hash == grabbed_hash;
 }
 
 // @NOTE:
@@ -124,10 +137,6 @@ void Client::worker_thread_run(ByteRange br, int ID)
 
 	// this is for error handling, redo the above steps until a success occurs
 	if (ec == boost::asio::error::eof) {
-		//auto crlf_pos = Shared::find_crlfsuffix_in(buff);
-		//std::string header (buff.begin(), crlf_pos);
-		//std::cerr << "Http Response:\n"
-		//std::cerr << header << std::endl;
 		std::cerr << "EOF prematurely reached. Restarting worker_thread_run";
 		std::cerr << std::endl;
 

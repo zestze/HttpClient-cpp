@@ -226,30 +226,32 @@ std::string Shared::convert_base64_to_hex(std::string base64_num)
 			base64_in_bin.push_back(d);
 	}
 
-	std::array<int, 32> bits32;
-	for (int i = 0; i < 32; i++) {
-		bits32[i] = base64_in_bin[i];
+	// md5 is 128 bits long, crc32 was 32
+	// all bits of number, in sequence
+	std::array<int, 128> bits128;
+	for (size_t i = 0; i < bits128.size(); i++) {
+		bits128[i] = base64_in_bin[i];
 	}
 
 	std::vector<int> octet_digits_base10;
-	const int num_octets = bits32.size() / 8;
+	const int num_octets = bits128.size() / 8;
 	for (int i = 0; i < num_octets; i++) {
 		int octet_digit = 0;
-		if (bits32[i * 8 + 0] == 1)
+		if (bits128[i * 8 + 0] == 1)
 			octet_digit += 128;
-		if (bits32[i * 8 + 1] == 1)
+		if (bits128[i * 8 + 1] == 1)
 			octet_digit += 64;
-		if (bits32[i * 8 + 2] == 1)
+		if (bits128[i * 8 + 2] == 1)
 			octet_digit += 32;
-		if (bits32[i * 8 + 3] == 1)
+		if (bits128[i * 8 + 3] == 1)
 			octet_digit += 16;
-		if (bits32[i * 8 + 4] == 1)
+		if (bits128[i * 8 + 4] == 1)
 			octet_digit += 8;
-		if (bits32[i * 8 + 5] == 1)
+		if (bits128[i * 8 + 5] == 1)
 			octet_digit += 4;
-		if (bits32[i * 8 + 6] == 1)
+		if (bits128[i * 8 + 6] == 1)
 			octet_digit += 2;
-		if (bits32[i * 8 + 7] == 1)
+		if (bits128[i * 8 + 7] == 1)
 			octet_digit += 1;
 
 		octet_digits_base10.push_back(octet_digit);
@@ -263,11 +265,9 @@ std::string Shared::convert_base64_to_hex(std::string base64_num)
 		std::string lsd_str (1, _INT_TO_CHAR.at(lsd));
 		std::string msd_str (1, _INT_TO_CHAR.at(msd));
 
-		std::string hex_digit = msd_str + lsd_str;
+		//std::string hex_digit = msd_str + lsd_str;
+		std::string hex_digit = lsd_str + msd_str;
 		octet_digits_hex.push_back(hex_digit);
-
-		std::cout << "msd,lsd: " << msd << "," << lsd << std::endl;
-		std::cout << "hex_digit: " << hex_digit << std::endl;
 	}
 
 	std::string retval ("");
