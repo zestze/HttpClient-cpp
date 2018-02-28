@@ -8,7 +8,7 @@ simple thread pool to download chunks, or decide to download the file in one req
 The Client also applies a md5 hash to the downloaded file, to verify its integrity.
 If the hash doesn't match, rather than crashing, the Client notifies the user and quits.
 
-# Usage && Requirements
+## Usage && Requirements
 
 - Clang++-5.0
 - BOOST 1.58
@@ -34,7 +34,7 @@ For general use, do the following:
     // method, which means only using 1 thread.
 
 
-# Design Decisions && Discussion
+## Design Decisions && Discussion
 
 Originally the application development was approached from a different perspective:
 threads grabbing 'tasks' from a Concurrent queue that was simply the file size split
@@ -63,9 +63,15 @@ partially lifted from a previous IRC client and server, and I wrapped them in a 
 made them general, since I will most likely be developing more networks applications in the future.
 
 
-# Results
+## Results
 
 ![Figure](Figure_1.png)
 
 The value at n = 0 is for the wget utility, the value at n = 1 is for the simple download
 implementation, and the rest are for various thread pool sizes.
+
+Wget is beaten by this application when using thread pool sizes of [2, 13]. Interestingly enough,
+the thread pool sizes that was the quickest with the hardcoded file was n = 9, and after n = 13,
+the time to download drastically shot up.
+
+Further benchmarks can expand on the buffer-size (in this implementation it was 4096 Bytes).
