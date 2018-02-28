@@ -1,0 +1,86 @@
+wget time: 
+real	1m46.662s
+user	0m3.549s
+sys	0m17.218s
+
+simple download time: 
+real	1m49.313s
+user	0m43.275s
+sys	0m5.679s
+
+2 threads download time: 
+real	1m45.587s
+user	0m50.607s
+sys	0m8.666s
+
+3 threads download time: 
+real	1m38.617s
+user	1m9.294s
+sys	0m11.725s
+
+4 threads download time: 
+real	1m39.596s
+user	1m20.069s
+sys	0m15.582s
+
+5 threads download time: 
+real	1m37.712s
+user	1m41.767s
+sys	0m20.241s
+
+6 threads download time: 
+real	1m31.560s
+user	1m49.290s
+sys	0m20.673s
+
+7 threads download time: 
+real	1m35.793s
+user	1m51.409s
+sys	0m21.980s
+
+8 threads download time: 
+real	1m36.678s
+user	1m53.468s
+sys	0m22.660s
+
+9 threads download time: 
+real	1m35.948s
+user	1m57.766s
+sys	0m22.659s
+
+10 threads download time: 
+real	1m50.495s
+user	2m1.294s
+sys	0m25.795s
+
+11 threads download time: 
+real	1m41.580s
+user	2m0.684s
+sys	0m26.478s
+
+12 threads download time: 
+real	1m29.628s
+user	1m59.702s
+sys	0m27.006s
+
+13 threads download time: 
+real	1m34.641s
+user	2m0.557s
+sys	0m26.517s
+
+14 threads download time: WARNING: generated md5hash did not match md5hash value passed in http Header
+Please try again.
+
+real	1m35.642s
+user	2m1.032s
+sys	0m27.339s
+
+15 threads download time: 
+real	1m35.579s
+user	2m1.386s
+sys	0m26.551s
+
+16 threads download time: 
+real	1m33.602s
+user	2m1.377s
+sys	0m26.397s
