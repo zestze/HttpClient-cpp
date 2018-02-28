@@ -17,6 +17,7 @@ RUN apt update && apt install -y \
 	python3-matplotlib \
 	git \
 	gist \
+	yorick \
 	vim-gtk
 
 # Start from a Bash prompt
