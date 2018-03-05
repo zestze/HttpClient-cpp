@@ -185,6 +185,21 @@ void Shared::write_to_file(size_t amount_to_write, std::vector<char>::iterator s
 	}
 }
 
+std::string Shared::inefficient_md5_hash(std::string file_name)
+{
+	std::ifstream file (file_name, std::ios::in | std::ios::binary);
+	std::stringstream ss;
+	ss << file.rdbuf();
+	std::string contents = ss.str();
+	unsigned char digest[MD5_DIGEST_LENGTH];
+	MD5((unsigned char *)contents.c_str(), contents.size(),
+			(unsigned char *)&digest);
+	char mdString[33] = {'\0'};
+	for (int i = 0; i < 16; i++)
+		sprintf(&mdString[i * 2], "%02x", (unsigned int)digest[i]);
+	return mdString;
+}
+
 std::string Shared::convert_base64_to_hex(std::string base64_num)
 {
 	std::vector<std::uint8_t> digits_base10;

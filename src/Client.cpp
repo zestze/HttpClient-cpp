@@ -105,13 +105,23 @@ bool Client::check_sum()
 		md5sum_result = buffer;
 	}
 
+	/*
+	auto temp_ = Shared::split(_file_path, "/");
+	std::string file_name = temp_.back();
+	std::string md5_hash_openssl = Shared::inefficient_md5_hash(file_name);
+	std::transform(md5_hash_openssl.begin(), md5_hash_openssl.end(),
+			md5_hash_openssl.begin(), ::toupper);
+	std::cout << "md5sum calculated from openssl: "
+		<< md5_hash_openssl << std::endl;
+		*/
+
 	std::vector<std::string> temp = Shared::split(md5sum_result, " ");
 	std::string md5hash = temp.front();
 	std::transform(md5hash.begin(), md5hash.end(), md5hash.begin(), ::toupper);
-	//std::cout << "md5sum calculated hash: " << md5hash << std::endl;
+	std::cout << "md5sum calculated hash:     " << md5hash << std::endl;
 
 	std::string grabbed_hash = Shared::convert_base64_to_hex(_checksum);
-	//std::cout << "hash grabbed from http: " << grabbed_hash << std::endl;
+	std::cout << "hash grabbed from http:     " << grabbed_hash << std::endl;
 
 	return md5hash == grabbed_hash;
 }

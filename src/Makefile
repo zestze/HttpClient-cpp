@@ -6,7 +6,7 @@ CFLAGS 		= -g -Wall $(INCLUDES)
 #CXXFLAGS 	= -g -Wall $(INCLUDES) -std=c++17 -pthread
 CXXFLAGS 	= -g -O2 $(INCLUDES) -std=c++17 -pthread
 LDFLAGS 	= -g -pthread
-LDLIBS 		= -lboost_system
+LDLIBS 		= -lboost_system -lcrypto
 
 $(TARGET): Client.o Shared.o
 

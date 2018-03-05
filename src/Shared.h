@@ -19,6 +19,7 @@
 #include <map>
 #include <iostream>
 #include <cstdint>
+#include <openssl/md5.h>
 
 #ifndef BUFF_SIZE
 #define BUFF_SIZE 4096
@@ -122,6 +123,13 @@ namespace Shared {
 			std::vector<char>::iterator start_pos,
 			std::vector<char>::iterator end_pos,
 			std::fstream& outfile);
+
+	// @NOTE:
+	// read entire file into a buffer and calculate the hash.
+	// with the openssl call, the buffer size ends up affecting
+	// the hash value.
+	//
+	std::string inefficient_md5_hash(std::string file_name);
 
 	// @NOTE:
 	// currently only works for md5 base64 numbers.
