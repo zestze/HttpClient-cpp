@@ -24,7 +24,6 @@
 #include <boost/asio.hpp>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <openssl/md5.h>
 
 #include "ConcQueue.h"
 #include "HttpRequest.h"
@@ -115,8 +114,6 @@ class Client {
 		// false otherwise
 		//
 		bool check_sum();
-
-		void md5_helper();
 
 		// @NOTE: not in use in this implementation
 		bool is_poison(const ByteRange task);
