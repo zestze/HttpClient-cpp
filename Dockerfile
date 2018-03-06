@@ -3,6 +3,9 @@
 # Use the latest stable Ubuntu version
 FROM ubuntu:16.04
 
+# Copy over relevant files
+COPY . /HttpClient-cpp/
+
 # Install libraries and programs
 RUN apt update && apt install -y \
 	xz-utils \
@@ -18,7 +21,9 @@ RUN apt update && apt install -y \
 	git \
 	gist \
 	yorick \
-	vim-gtk
+	vim-gtk \
+	openssl \
+	libssl-dev
 
 # Start from a Bash prompt
 CMD [ "/bin/bash" ]

@@ -251,7 +251,7 @@ void Client::run(bool force_simple)
 
 		auto temp = Shared::split(_file_path, "/");
 		std::string file_name = temp.back();
-		_dest_file.open(file_name, std::ios::out | std::ios::binary);
+		_dest_file.open("../" + file_name, std::ios::out | std::ios::binary);
 
 		std::vector<char> buff (BUFF_SIZE, '\0');
 		boost::system::error_code ec;

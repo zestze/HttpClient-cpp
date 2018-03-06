@@ -14,6 +14,7 @@ If the hash doesn't match, rather than crashing, the Client notifies the user an
 - BOOST 1.58
 - make
 - md5sum
+- openssl
 
 The application provides testing scripts to build and execute the application.
 The `run*.sh` family scripts build the application, and execute it, hardocoded to
@@ -33,6 +34,12 @@ make
 ./Main <url-filepath> <num-threads> <force-simple>
 // <force-simple> must be a 1 or 0. This is to make the client use the 'simple' download
 // method, which means only using 1 thread.
+```
+
+For building from Dockerfile:
+```bash
+sudo docker build -t ubuntu_clang:latest .
+sudo docker run -t -i ubuntu_clang
 ```
 
 ## Results
