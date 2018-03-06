@@ -68,6 +68,9 @@ class Client {
 		{
 			set_globals();
 			std::signal(SIGINT, signal_handler);
+			auto temp = Shared::split(_file_path, "/");
+			std::string file_name = temp.back();
+			_dest_file_path = "../" + file_name;
 		}
 
 		// @NOTE:
@@ -137,6 +140,7 @@ class Client {
 
 		std::string _host_url;
 		std::string _file_path;
+		std::string _dest_file_path;
 		std::string _checksum;
 
 		int _file_size;

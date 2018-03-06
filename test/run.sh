@@ -12,6 +12,5 @@ fi
 
 cd ../src
 make
-rm work-at-vimeo-2.mp4
 ./Main storage.googleapis.com/vimeo-test/work-at-vimeo-2.mp4 $args 0
 make clean

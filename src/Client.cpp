@@ -93,9 +93,8 @@ bool Client::check_sum()
 		dup2(pipe_fd[1], 1);
 		close(pipe_fd[1]);
 
-		auto temp = Shared::split(_file_path, "/");
-		std::string file_name = temp.back();
-		execl("/usr/bin/md5sum", "md5sum", file_name.c_str(), (char *)0);
+		execl("/usr/bin/md5sum", "md5sum", _dest_file_path.c_str(),
+				(char *)0);
 	}
 	else {
 		wait(nullptr);
@@ -106,9 +105,7 @@ bool Client::check_sum()
 	}
 
 	/*
-	auto temp_ = Shared::split(_file_path, "/");
-	std::string file_name = temp_.back();
-	std::string md5_hash_openssl = Shared::inefficient_md5_hash(file_name);
+	std::string md5_hash_openssl = Shared::inefficient_md5_hash(_dest_file_path);
 	std::transform(md5_hash_openssl.begin(), md5_hash_openssl.end(),
 			md5_hash_openssl.begin(), ::toupper);
 	std::cout << "md5sum calculated from openssl: "
@@ -249,9 +246,7 @@ void Client::run(bool force_simple)
 		//req.set_keepalive();
 		Shared::try_writing(socket, req.to_string());
 
-		auto temp = Shared::split(_file_path, "/");
-		std::string file_name = temp.back();
-		_dest_file.open("../" + file_name, std::ios::out | std::ios::binary);
+		_dest_file.open(_dest_file_path, std::ios::out | std::ios::binary);
 
 		std::vector<char> buff (BUFF_SIZE, '\0');
 		boost::system::error_code ec;
