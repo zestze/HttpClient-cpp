@@ -10,7 +10,8 @@
 // full of functions, nor is the task that large.
 //
 
-#include <boost/asio.hpp>
+//#include <boost/asio.hpp>
+#include <asio.hpp>
 #include <string>
 #include <array>
 #include <vector>
@@ -29,7 +30,8 @@
 #define POISON -2
 #endif
 
-using boost::asio::ip::tcp;
+//using boost::asio::ip::tcp;
+using tcp = asio::ip::tcp;
 
 namespace Shared {
 
@@ -62,7 +64,7 @@ namespace Shared {
 	// connects to a server, performs dns resolution, and tests for
 	// ipv4 and ipv6 connections.
 	//
-	tcp::socket connect_to_server(std::string url, boost::asio::io_service& io_service);
+	tcp::socket connect_to_server(std::string url, asio::io_service& io_service);
 
 	// @NOTE:
 	// for finding "\r\n\r\n" in an array, which denotes the end of a http header.

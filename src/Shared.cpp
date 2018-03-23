@@ -38,20 +38,20 @@ std::string Shared::join(std::vector<std::string> msgs, std::string delim)
 std::string Shared::try_reading_msg(tcp::socket& sock)
 {
 	std::array<char, BUFF_SIZE> buff = { };
-	boost::system::error_code ec;
-	sock.read_some(boost::asio::buffer(buff), ec); //@TODO: take care of ec
+	asio::error_code ec;
+	sock.read_some(asio::buffer(buff), ec); //@TODO: take care of ec
 	std::string msg(buff.data());
 	return msg;
 }
 
 void Shared::try_writing(tcp::socket& sock, std::string msg)
 {
-	boost::system::error_code ec;
-	boost::asio::write(sock, boost::asio::buffer(msg),
-		       boost::asio::transfer_all(), ec);
+	asio::error_code ec;
+	asio::write(sock, asio::buffer(msg),
+		       asio::transfer_all(), ec);
 }
 
-tcp::socket Shared::connect_to_server(std::string url, boost::asio::io_service& io_service)
+tcp::socket Shared::connect_to_server(std::string url, asio::io_service& io_service)
 {
 	// establish connection to server
 	tcp::resolver resolver(io_service);
@@ -62,13 +62,13 @@ tcp::socket Shared::connect_to_server(std::string url, boost::asio::io_service& 
 	tcp::resolver::iterator end;
 
 	tcp::socket socket(io_service);
-	boost::system::error_code ec = boost::asio::error::host_not_found;
+	asio::error_code ec = asio::error::host_not_found;
 	while (ec &&  endpoint_iterator != end) {
 		socket.close();
 		socket.connect(*endpoint_iterator++, ec);
 	}
 	if (ec)
-		throw boost::system::system_error(ec);
+		throw asio::system_error(ec);
 	return socket;
 }
 

@@ -16,16 +16,14 @@
 #include <string>
 #include <algorithm>
 #include <thread>
-#include <experimental/optional>
 #include <chrono>
-#include <condition_variable>
 #include <limits>
 #include <cstdio>
-#include <boost/asio.hpp>
+//#include <boost/asio.hpp>
+#include <asio.hpp>
 #include <unistd.h>
 #include <sys/wait.h>
 
-#include "ConcQueue.h"
 #include "HttpRequest.h"
 #include "Shared.h"
 #include "ByteRange.h"
@@ -34,22 +32,14 @@
 #define BUFF_SIZE 4096
 #endif
 
-// @NOTE:
-// not in use, was for previous implementation as means
-// to poison a task_queue and have worker_threads exit
-// when an exception was thrown.
-//
-#ifndef POISON
-#define POISON -2
-#endif
-
 // for referencing 'seconds' as a 's' literal
 //
 using namespace std::chrono_literals;
 
 // for boost asio socket functions
 //
-using boost::asio::ip::tcp;
+//using boost::asio::ip::tcp;
+using tcp = asio::ip::tcp;
 
 // @NOTE:
 // not in use in this implementation
@@ -119,24 +109,12 @@ class Client {
 		bool check_sum();
 
 		// @NOTE: not in use in this implementation
-		bool is_poison(const ByteRange task);
-
-		// @NOTE: not in use in this implementation
-		void poison_tasks();
-
-		// @NOTE: not in use in this implementation
-		bool sync_file_write(ByteRange task,
-				std::vector<char>::iterator start_pos,
-				std::vector<char>::iterator end_pos);
-
-		// @NOTE: not in use in this implementation
 		size_t try_reading(std::vector<char>& main_buff,
 				tcp::socket& socket,
 				size_t payload_size);
 
-
 	private:
-		boost::asio::io_service _io_service;
+		asio::io_service _io_service;
 
 		std::string _host_url;
 		std::string _file_path;
@@ -152,14 +130,6 @@ class Client {
 		std::fstream _dest_file;
 
 		std::vector<std::thread> _threads;
-
-		// @NOTE:
-		// members not in use for this implementation
-		//
-		std::condition_variable _file_cv;
-		std::mutex    _file_lock;
-		ConcQueue<ByteRange> _tasks;
-
 };
 
 #endif

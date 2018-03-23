@@ -41,11 +41,8 @@ void Client::parallel_download()
 		temp_offset += chunk;
 	}
 
-	for (;;) {
-		if (exit_thread || _offset == _file_size)
-			break;
+	while (!exit_thread || _offset != _file_size)
 		std::this_thread::sleep_for(1s);
-	}
 
 	for (std::thread& t : _threads) {
 		if (t.joinable())
@@ -142,11 +139,11 @@ void Client::worker_thread_run(ByteRange br, int ID)
 	Shared::try_writing(socket, req.to_string());
 
 	std::vector<char> buff (BUFF_SIZE, '\0');
-	boost::system::error_code ec;
-	size_t len = socket.read_some(boost::asio::buffer(buff), ec);
+	asio::error_code ec;
+	size_t len = socket.read_some(asio::buffer(buff), ec);
 
 	// this is for error handling, redo the above steps until a success occurs
-	if (ec == boost::asio::error::eof) {
+	if (ec == asio::error::eof) {
 		std::cerr << "EOF prematurely reached. Restarting worker_thread_run";
 		std::cerr << std::endl;
 
@@ -154,7 +151,7 @@ void Client::worker_thread_run(ByteRange br, int ID)
 		// contemplate replacing this while loop,
 		// with a recursive call to worker_thread_run() to eliminate
 		// redundant code
-		while (ec == boost::asio::error::eof) {
+		while (ec == asio::error::eof) {
 			socket.close();
 			socket = Shared::connect_to_server(_host_url, _io_service);
 
@@ -165,11 +162,11 @@ void Client::worker_thread_run(ByteRange br, int ID)
 
 			Shared::try_writing(socket, req.to_string());
 
-			len = socket.read_some(boost::asio::buffer(buff), ec);
+			len = socket.read_some(asio::buffer(buff), ec);
 		}
 	}
 	else if (ec)
-		throw boost::system::system_error(ec);
+		throw asio::system_error(ec);
 
 	auto crlf_pos = Shared::find_crlfsuffix_in(buff);
 
@@ -184,18 +181,18 @@ void Client::worker_thread_run(ByteRange br, int ID)
 		if (offset == static_cast<size_t>(br.get_inclus_diff()))
 			break;
 
-		len = socket.read_some(boost::asio::buffer(buff), ec);
+		len = socket.read_some(asio::buffer(buff), ec);
 
 		// this is for error handling, if socket gets prematurely closed,
 		// recursively repeat above steps
-		if (ec == boost::asio::error::eof) {
+		if (ec == asio::error::eof) {
 			socket.close();
 			std::remove(file_name.c_str());
 			worker_thread_run(br, ID);
 			return;
 		}
 		else if (ec)
-			throw boost::system::system_error(ec);
+			throw asio::system_error(ec);
 		Shared::write_to_file(len, buff.begin(), buff.end(), outfile);
 		offset += len;
 	}
@@ -212,8 +209,8 @@ void Client::simple_download()
 	Shared::try_writing(socket, req.to_string());
 
 	std::vector<char> buff (BUFF_SIZE, '\0');
-	boost::system::error_code ec;
-	size_t len = socket.read_some(boost::asio::buffer(buff), ec);
+	asio::error_code ec;
+	size_t len = socket.read_some(asio::buffer(buff), ec);
 	auto crlf_pos = Shared::find_crlfsuffix_in(buff);
 	if (crlf_pos == buff.end())
 		throw "no crlf suffix";
@@ -224,11 +221,11 @@ void Client::simple_download()
 	Shared::write_to_file(body_len, body_pos, buff.end(), _dest_file);
 
 	while (!exit_thread) {
-		len = socket.read_some(boost::asio::buffer(buff), ec);
-		if (ec == boost::asio::error::eof)
+		len = socket.read_some(asio::buffer(buff), ec);
+		if (ec == asio::error::eof)
 			break;
 		else if (ec)
-			throw boost::system::system_error(ec);
+			throw asio::system_error(ec);
 		Shared::write_to_file(len, buff.begin(), buff.end(), _dest_file);
 	}
 }
@@ -249,8 +246,8 @@ void Client::run(bool force_simple)
 		_dest_file.open(_dest_file_path, std::ios::out | std::ios::binary);
 
 		std::vector<char> buff (BUFF_SIZE, '\0');
-		boost::system::error_code ec;
-		socket.read_some(boost::asio::buffer(buff), ec);
+		asio::error_code ec;
+		socket.read_some(asio::buffer(buff), ec);
 
 		auto crlf_pos = Shared::find_crlfsuffix_in(buff); // note: position of CRLFCRLF
 		if (crlf_pos == buff.end())
@@ -274,105 +271,11 @@ void Client::run(bool force_simple)
 	{
 		std::cerr << "caught error in Client::run()" << std::endl;
 		exit_thread = true;
-		poison_tasks();
+		//poison_tasks();
 		for (std::thread& t : _threads) {
 			if (t.joinable())
 				t.join();
 		}
 		throw;
 	}
-}
-
-// @NOTE: functions below are not in use in this implementation
-//
-// were originally used in a 'pass-the-baton' implementation, where threads
-// sent multiple chunk requests and in synch wrote to a destination file
-// implementation was too slow, so took a different approach
-//
-// Kept as part of the file, for future implementations where this approach
-// is modified to be efficient
-//
-bool Client::sync_file_write(ByteRange task, std::vector<char>::iterator start_pos,
-		std::vector<char>::iterator end_pos)
-{
-	std::unique_lock<std::mutex> lock(_file_lock);
-
-	std::atomic<int>& offset = _offset;
-	_file_cv.wait_for(lock, 1s,
-			[&task, &offset]{return task.offset_matches(offset);});
-
-	if (!task.offset_matches(_offset))
-		return false;
-
-	for (int i = 0; i < task.get_inclus_diff(); i++) {
-		if (start_pos == end_pos)
-			throw std::string("start_pos == end_poos");
-		_dest_file << *start_pos++;
-	}
-	_offset += task.get_inclus_diff();
-
-	return true;
-}
-
-size_t Client::try_reading(std::vector<char>& main_buff, tcp::socket& socket, size_t payload_size)
-{
-	std::vector<char> temp_buff (BUFF_SIZE, '\0');
-	boost::system::error_code ec;
-	//main_buff.clear();
-
-	size_t len = socket.read_some(boost::asio::buffer(temp_buff), ec);
-	if (ec == boost::asio::error::eof) {
-		auto crlf_pos = Shared::find_crlfsuffix_in(temp_buff);
-		std::string header (temp_buff.begin(), crlf_pos);
-		std::cerr << "Http Response:\n";
-		std::cerr << header << std::endl;
-		return _SIZE_MAX;
-	}
-	else if (ec)
-		throw boost::system::system_error(ec);
-
-	auto crlf_pos = Shared::find_crlfsuffix_in(temp_buff);
-
-	int header_len = 0;
-	for (auto it = temp_buff.begin(); it != crlf_pos; ++it)
-		header_len++;
-
-	// total length to read = header_len + 4 + payload_size
-	// amount read thus far = len
-	size_t amount_left_to_read = (header_len + 4 + payload_size) - len;
-
-	// put data into main_buff (including header, for now)
-	main_buff.clear();
-	for (size_t i = 0; i < len; i++)
-		main_buff.push_back(temp_buff[i]);
-
-	len = boost::asio::read(socket, boost::asio::buffer(temp_buff),
-			boost::asio::transfer_exactly(amount_left_to_read), ec);
-	if (ec == boost::asio::error::eof) {
-		std::string header (temp_buff.begin(), crlf_pos);
-		std::cerr << "Http Response:\n";
-		std::cerr << header << std::endl;
-		return _SIZE_MAX;
-	}
-	else if (ec)
-		throw boost::system::system_error(ec);
-
-	for (size_t i = 0; i < len; i++)
-		main_buff.push_back(temp_buff[i]);
-
-	return main_buff.size();
-}
-
-bool Client::is_poison(const ByteRange task)
-{
-	if (task.first == POISON || task.last == POISON)
-		return true;
-	return false;
-}
-
-void Client::poison_tasks()
-{
-	size_t num_threads = _threads.size();
-	ByteRange poison (POISON, POISON);
-	_tasks.poison_self(poison, num_threads);
 }

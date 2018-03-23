@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 		Client client(url_str, filepath_str, num_threads);
 		client.run(force_simple);
 
-	} catch(boost::system::system_error& e) {
+	} catch(asio::system_error& e) {
 		std::cerr << e.what() << "\n";
 	} catch(std::exception& e) {
 		std::cerr << e.what() << "\n";

@@ -13,7 +13,8 @@ RUN apt update && apt install -y \
 	curl \
 	clang++-5.0 \
 	make \
-	libboost-all-dev \
+	#libboost-all-dev \
+	libasio-dev \
 	traceroute \
 	wget \
 	python3 \
