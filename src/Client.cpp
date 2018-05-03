@@ -213,7 +213,7 @@ void Client::simple_download()
 	size_t len = socket.read_some(asio::buffer(buff), ec);
 	auto crlf_pos = Shared::find_crlfsuffix_in(buff);
 	if (crlf_pos == buff.end())
-		throw "no crlf suffix";
+		throw std::runtime_error("no crlf suffix");
 
 	std::string header (buff.begin(), crlf_pos);
 	size_t body_len = len - header.length() - 4; // 4 because CRLFCRLF
@@ -251,7 +251,7 @@ void Client::run(bool force_simple)
 
 		auto crlf_pos = Shared::find_crlfsuffix_in(buff); // note: position of CRLFCRLF
 		if (crlf_pos == buff.end())
-			throw "crlf not in initial http response";
+			throw std::runtime_error("crlf not in initial http response");
 
 		std::string header (buff.begin(), crlf_pos);
 		bool accepts_byte_ranges = Shared::check_accepts_byte_ranges(header);
@@ -267,9 +267,10 @@ void Client::run(bool force_simple)
 
 		_dest_file.close();
 	}
-	catch (...)
+	catch (std::exception& e)
 	{
 		std::cerr << "caught error in Client::run()" << std::endl;
+		std::cerr << e.what() << std::endl;
 		exit_thread = true;
 		//poison_tasks();
 		for (std::thread& t : _threads) {

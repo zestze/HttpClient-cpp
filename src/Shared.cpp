@@ -29,7 +29,7 @@ std::vector<std::string> Shared::split(std::string full_msg, std::string delim)
 std::string Shared::join(std::vector<std::string> msgs, std::string delim)
 {
 	std::string full_msg;
-	for (std::string msg : msgs) {
+	for (const std::string& msg : msgs) {
 		full_msg += delim + msg;
 	}
 	return full_msg;
@@ -57,7 +57,7 @@ tcp::socket Shared::connect_to_server(std::string url, asio::io_service& io_serv
 	tcp::resolver resolver(io_service);
 	tcp::resolver::query query(url, "http");
 
-	// test for both ipv4 and ipv6 ip's
+	// extra for both ipv4 and ipv6 ip's
 	tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 	tcp::resolver::iterator end;
 
@@ -100,7 +100,7 @@ bool Shared::check_accepts_byte_ranges(std::string httpHeader)
 		return false;
 	std::size_t crlf_pos = httpHeader.find("\r\n", start_pos);
 	if (crlf_pos == std::string::npos)
-		throw "didn't give correct httpHeader";
+		throw std::runtime_error("didn't give correct httpHeader");
 	std::size_t byte_pos = httpHeader.find("bytes", start_pos);
 	std::size_t Byte_pos = httpHeader.find("Bytes", start_pos);
 	if (byte_pos < crlf_pos || Byte_pos < crlf_pos)
@@ -112,7 +112,7 @@ int Shared::parse_for_cont_length(std::string httpHeader)
 {
 	std::size_t start_pos = httpHeader.find("Content-Length:");
 	if (start_pos == std::string::npos)
-		throw "no content length in httpHeader";
+		throw std::runtime_error("no content length in httpHeader");
 	std::size_t crlf_pos = httpHeader.find("\r\n", start_pos);
 	std::string content_length ("Content-Length:");
 	std::string num = httpHeader.substr(start_pos + content_length.length(),
@@ -128,7 +128,7 @@ std::string Shared::parse_for_hash(std::string httpHeader, std::string hash_tag)
 	std::string x_goog_hash ("x-goog-hash:");
 	std::size_t start_pos = httpHeader.find(x_goog_hash);
 	if (start_pos == std::string::npos)
-		throw "no hash in httpHeader";
+		throw std::runtime_error("no hash in httpHeader");
 	while (start_pos != std::string::npos) {
 		sp_vec.push_back(start_pos);
 		start_pos = httpHeader.find(x_goog_hash, start_pos + 1);
@@ -170,7 +170,7 @@ void Shared::write_to_file(size_t amount_to_write, std::vector<char>::iterator s
 {
 	for (size_t i = 0; i < amount_to_write; i++) {
 		if (start_pos == end_pos)
-			throw std::string("start_pos == end_pos");
+			throw std::runtime_error("start_pos == end_pos");
 		outfile << *start_pos++;
 	}
 }
@@ -180,7 +180,7 @@ void Shared::write_to_file(size_t amount_to_write, std::vector<char>::iterator s
 {
 	for (size_t i = 0; i < amount_to_write; i++) {
 		if (start_pos == end_pos)
-			throw std::string("start_pos == end_pos");
+			throw std::runtime_error("start_pos == end_pos");
 		outfile << *start_pos++;
 	}
 }
@@ -285,8 +285,8 @@ std::string Shared::convert_base64_to_hex(std::string base64_num)
 		octet_digits_hex.push_back(hex_digit);
 	}
 
-	std::string retval ("");
-	for (std::string s : octet_digits_hex)
+	std::string retval;
+	for (const std::string& s : octet_digits_hex)
 		retval += s;
 
 	return retval;
